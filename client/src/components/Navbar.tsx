@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, isDemoMode } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -89,28 +89,30 @@ export const Navbar: React.FC = () => {
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-            <button
-              type="button"
-              onClick={() => setIsDemoModalOpen(true)}
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: 'white',
-                borderRadius: 'var(--radius-sm)',
-                padding: '2px 8px',
-                fontSize: '0.6875rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontWeight: 600,
-              }}
-            >
-              <Sparkles size={11} color="var(--color-amber)" />
-              {user ? `Persona: ${user.role.toUpperCase()}` : '⚡ Quick Demo Switcher'}
-            </button>
-          </div>
+          {isDemoMode && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+              <button
+                type="button"
+                onClick={() => setIsDemoModalOpen(true)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  color: 'white',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '2px 8px',
+                  fontSize: '0.6875rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: 600,
+                }}
+              >
+                <Sparkles size={11} color="var(--color-amber)" />
+                {user ? `Persona: ${user.role.toUpperCase()}` : '⚡ Quick Demo Switcher'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Main Navbar */}
@@ -441,17 +443,19 @@ export const Navbar: React.FC = () => {
                 <Shield size={16} /> Admin Console
               </Link>
             )}
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                setIsDemoModalOpen(true);
-              }}
-              style={{ justifyContent: 'flex-start' }}
-            >
-              <Sparkles size={16} /> Switch Demo Persona
-            </button>
+            {isDemoMode && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsDemoModalOpen(true);
+                }}
+                style={{ justifyContent: 'flex-start' }}
+              >
+                <Sparkles size={16} /> Switch Demo Persona
+              </button>
+            )}
           </div>
         )}
       </header>

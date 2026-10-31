@@ -17,8 +17,8 @@ function generateGrievanceId(): string {
 }
 
 // ─── Calculate target resolution date from SLA ───
-function calculateTargetDate(db: any, category: string, priority: string, createdAt: string): string | null {
-  const sla = db.prepare(`
+async function calculateTargetDate(db: any, category: string, priority: string, createdAt: string): Promise<string | null> {
+  const sla = await db.prepare(`
     SELECT target_hours FROM sla_policies 
     WHERE category = ? AND priority = ? AND is_active = 1
     ORDER BY department_id IS NULL ASC
@@ -33,7 +33,7 @@ function calculateTargetDate(db: any, category: string, priority: string, create
 }
 
 // POST /api/complaints — Create new complaint
-router.post('/', requireAuth, (req: Request, res: Response) => {
+router.post('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const parsed = createComplaintSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -49,11 +49,11 @@ router.post('/', requireAuth, (req: Request, res: Response) => {
     const db = getDb();
 
     // Generate unique grievance_id
-    let grievance_id: string;
+    let grievance_id: string = '';
     let attempts = 0;
     do {
       grievance_id = generateGrievanceId();
-      const existing = db.prepare('SELECT id FROM complaints WHERE grievance_id = ?').get(grievance_id);
+      const existing = await db.prepare('SELECT id FROM complaints WHERE grievance_id = ?').get(grievance_id);
       if (!existing) break;
       attempts++;
     } while (attempts < 10);
@@ -64,11 +64,11 @@ router.post('/', requireAuth, (req: Request, res: Response) => {
     }
 
     const now = new Date().toISOString().replace('T', ' ').split('.')[0];
-    const targetDate = calculateTargetDate(db, category, 'medium', now);
+    const targetDate = await calculateTargetDate(db, category, 'medium', now);
 
     // Transaction: insert complaint + initial status history
-    const tx = db.transaction(() => {
-      const result = db.prepare(`
+    const tx = db.transaction(async () => {
+      const result = await db.prepare(`
         INSERT INTO complaints 
         (grievance_id, title, description, category, priority, status, citizen_id,
          location, city, incident_date, target_resolution_date, created_at, updated_at)
@@ -81,13 +81,13 @@ router.post('/', requireAuth, (req: Request, res: Response) => {
       const complaintId = result.lastInsertRowid;
 
       // Initial status history entry
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO status_history (complaint_id, previous_status, new_status, changed_by_user_id, reason, is_public, created_at)
         VALUES (?, NULL, 'submitted', ?, 'Complaint registered', 1, ?)
       `).run(complaintId, req.userId, now);
 
       // Audit log
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, created_at)
         VALUES (?, 'create', 'complaint', ?, ?, ?)
       `).run(req.userId, complaintId, `Complaint ${grievance_id} created`, now);
@@ -95,9 +95,9 @@ router.post('/', requireAuth, (req: Request, res: Response) => {
       return complaintId;
     });
 
-    const complaintId = tx();
+    const complaintId = await tx();
 
-    const complaint = db.prepare(`
+    const complaint = await db.prepare(`
       SELECT * FROM complaints WHERE id = ?
     `).get(complaintId);
 
@@ -113,7 +113,7 @@ router.post('/', requireAuth, (req: Request, res: Response) => {
 });
 
 // GET /api/complaints/my — List complaints filed by the currently authenticated user
-router.get('/my', requireAuth, (req: Request, res: Response) => {
+router.get('/my', requireAuth, async (req: Request, res: Response) => {
   try {
     const parsed = complaintQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -164,13 +164,13 @@ router.get('/my', requireAuth, (req: Request, res: Response) => {
     const sortCol = validSorts.includes(sort) ? sort : 'created_at';
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
 
-    const countResult = db.prepare(`
+    const countResult = await db.prepare(`
       SELECT COUNT(*) as total FROM complaints c ${where}
     `).get(...params) as { total: number };
 
     const offset = (page - 1) * pageSize;
 
-    const complaints = db.prepare(`
+    const complaints = await db.prepare(`
       SELECT c.*, 
              d.name as department_name,
              u_citizen.first_name || ' ' || u_citizen.last_name as citizen_name,
@@ -201,7 +201,7 @@ router.get('/my', requireAuth, (req: Request, res: Response) => {
 });
 
 // GET /api/complaints/public — Public feed for home page and city portal
-router.get('/public', optionalAuth, (req: Request, res: Response) => {
+router.get('/public', optionalAuth, async (req: Request, res: Response) => {
   try {
     const parsed = complaintQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -232,13 +232,13 @@ router.get('/public', optionalAuth, (req: Request, res: Response) => {
       params.push(...statuses);
     }
 
-    const countResult = db.prepare(`
+    const countResult = await db.prepare(`
       SELECT COUNT(*) as total FROM complaints c ${where}
     `).get(...params) as { total: number };
 
     const offset = (page - 1) * pageSize;
 
-    const complaints = db.prepare(`
+    const complaints = await db.prepare(`
       SELECT c.id, c.grievance_id, c.title, c.description, c.category, c.priority, c.status,
              c.location, c.city, c.incident_date, c.target_resolution_date, c.resolved_at,
              c.resolution_notes, c.is_overdue, c.created_at, c.updated_at,
@@ -267,7 +267,7 @@ router.get('/public', optionalAuth, (req: Request, res: Response) => {
 });
 
 // GET /api/complaints — List complaints with filters
-router.get('/', requireAuth, (req: Request, res: Response) => {
+router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const parsed = complaintQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -344,13 +344,13 @@ router.get('/', requireAuth, (req: Request, res: Response) => {
     const sortCol = validSorts.includes(sort) ? sort : 'created_at';
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
 
-    const countResult = db.prepare(`
+    const countResult = await db.prepare(`
       SELECT COUNT(*) as total FROM complaints c ${where}
     `).get(...params) as { total: number };
 
     const offset = (page - 1) * pageSize;
 
-    const complaints = db.prepare(`
+    const complaints = await db.prepare(`
       SELECT c.*, 
              d.name as department_name,
              u_citizen.first_name || ' ' || u_citizen.last_name as citizen_name,
@@ -381,10 +381,10 @@ router.get('/', requireAuth, (req: Request, res: Response) => {
 });
 
 // GET /api/complaints/track/:grievanceId — Public tracking (limited info)
-router.get('/track/:grievanceId', optionalAuth, (req: Request, res: Response) => {
+router.get('/track/:grievanceId', optionalAuth, async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    const complaint = db.prepare(`
+    const complaint = await db.prepare(`
       SELECT c.grievance_id, c.title, c.category, c.status, c.priority, 
              c.location, c.city, c.created_at, c.updated_at,
              c.target_resolution_date, c.is_overdue, c.resolution_notes,
@@ -400,7 +400,7 @@ router.get('/track/:grievanceId', optionalAuth, (req: Request, res: Response) =>
     }
 
     // Get public status history
-    const history = db.prepare(`
+    const history = await db.prepare(`
       SELECT sh.new_status, sh.previous_status, sh.reason, sh.created_at,
              u.first_name || ' ' || u.last_name as changed_by
       FROM status_history sh
@@ -411,7 +411,7 @@ router.get('/track/:grievanceId', optionalAuth, (req: Request, res: Response) =>
     `).all(req.params.grievanceId);
 
     // Get public updates
-    const updates = db.prepare(`
+    const updates = await db.prepare(`
       SELECT pu.message, pu.created_at,
              u.first_name || ' ' || u.last_name as author
       FROM public_updates pu
@@ -431,12 +431,12 @@ router.get('/track/:grievanceId', optionalAuth, (req: Request, res: Response) =>
 });
 
 // GET /api/complaints/:id — Full complaint details
-router.get('/:id', requireAuth, (req: Request, res: Response) => {
+router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const complaintId = parseInt(req.params.id);
 
-    const complaint = db.prepare(`
+    const complaint = await db.prepare(`
       SELECT c.*, 
              d.name as department_name,
              u_citizen.first_name || ' ' || u_citizen.last_name as citizen_name,
@@ -466,7 +466,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
     }
 
     // Public status history
-    const history = db.prepare(`
+    const history = await db.prepare(`
       SELECT sh.*, u.first_name || ' ' || u.last_name as changed_by_name
       FROM status_history sh
       LEFT JOIN users u ON sh.changed_by_user_id = u.id
@@ -476,7 +476,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
     `).all(complaintId);
 
     // Public updates
-    const updates = db.prepare(`
+    const updates = await db.prepare(`
       SELECT pu.*, u.first_name || ' ' || u.last_name as author_name
       FROM public_updates pu
       LEFT JOIN users u ON pu.user_id = u.id
@@ -487,7 +487,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
     // Internal notes (only for staff)
     let notes: any[] = [];
     if (req.userRole !== 'citizen') {
-      notes = db.prepare(`
+      notes = await db.prepare(`
         SELECT n.*, u.first_name || ' ' || u.last_name as author_name
         FROM internal_notes n
         LEFT JOIN users u ON n.user_id = u.id
@@ -497,7 +497,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
     }
 
     // Assignment history
-    const assignments = db.prepare(`
+    const assignments = await db.prepare(`
       SELECT ah.*, 
              u_prev.first_name || ' ' || u_prev.last_name as previous_officer_name,
              u_new.first_name || ' ' || u_new.last_name as new_officer_name,
@@ -515,7 +515,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
     `).all(complaintId);
 
     // Attachments
-    const attachments = db.prepare(`
+    const attachments = await db.prepare(`
       SELECT a.id, a.original_filename, a.mime_type, a.file_size, a.is_public, a.created_at,
              u.first_name || ' ' || u.last_name as uploaded_by_name
       FROM attachments a
@@ -528,7 +528,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
     // Escalation events
     let escalations: any[] = [];
     if (req.userRole !== 'citizen') {
-      escalations = db.prepare(`
+      escalations = await db.prepare(`
         SELECT e.*, u.first_name || ' ' || u.last_name as escalated_to_name
         FROM escalation_events e
         LEFT JOIN users u ON e.escalated_to_user_id = u.id
@@ -556,7 +556,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
 });
 
 // PUT /api/complaints/:id/status — Update complaint status
-router.put('/:id/status', requireAuth, (req: Request, res: Response) => {
+router.put('/:id/status', requireAuth, async (req: Request, res: Response) => {
   try {
     const parsed = updateStatusSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -568,7 +568,7 @@ router.put('/:id/status', requireAuth, (req: Request, res: Response) => {
     const db = getDb();
     const complaintId = parseInt(req.params.id);
 
-    const complaint = db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId) as Complaint | undefined;
+    const complaint = await db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId) as Complaint | undefined;
     if (!complaint) {
       res.status(404).json({ success: false, error: 'Complaint not found' });
       return;
@@ -599,7 +599,7 @@ router.put('/:id/status', requireAuth, (req: Request, res: Response) => {
 
     const now = new Date().toISOString().replace('T', ' ').split('.')[0];
 
-    const tx = db.transaction(() => {
+    const tx = db.transaction(async () => {
       const updateFields: string[] = ['status = ?', 'updated_at = ?'];
       const updateParams: any[] = [newStatus, now];
 
@@ -615,23 +615,23 @@ router.put('/:id/status', requireAuth, (req: Request, res: Response) => {
 
       updateParams.push(complaintId);
 
-      db.prepare(`UPDATE complaints SET ${updateFields.join(', ')} WHERE id = ?`).run(...updateParams);
+      await db.prepare(`UPDATE complaints SET ${updateFields.join(', ')} WHERE id = ?`).run(...updateParams);
 
       // Status history
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO status_history (complaint_id, previous_status, new_status, changed_by_user_id, reason, is_public, created_at)
         VALUES (?, ?, ?, ?, ?, 1, ?)
       `).run(complaintId, complaint.status, newStatus, req.userId, reason || null, now);
 
       // Audit log
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, created_at)
         VALUES (?, 'status_change', 'complaint', ?, ?, ?)
       `).run(req.userId, complaintId, `Status: ${complaint.status} → ${newStatus}`, now);
 
       // Notification to citizen
       if (req.userRole !== 'citizen') {
-        db.prepare(`
+        await db.prepare(`
           INSERT INTO notifications (user_id, title, message, type, related_complaint_id, created_at)
           VALUES (?, 'Complaint Status Updated', ?, 'info', ?, ?)
         `).run(
@@ -642,9 +642,9 @@ router.put('/:id/status', requireAuth, (req: Request, res: Response) => {
       }
     });
 
-    tx();
+    await tx();
 
-    const updated = db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId);
+    const updated = await db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId);
     res.json({ success: true, data: { complaint: updated }, message: 'Status updated successfully' });
   } catch (err) {
     console.error('Update status error:', err);
@@ -652,8 +652,8 @@ router.put('/:id/status', requireAuth, (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/complaints/:id/assign — Assign complaint
-router.put('/:id/assign', requireRole('manager', 'admin'), (req: Request, res: Response) => {
+// PUT /api/complaints/:id/assign — Assign complaint to officer/department
+router.put('/:id/assign', requireRole('manager', 'admin'), async (req: Request, res: Response) => {
   try {
     const parsed = assignComplaintSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -665,7 +665,7 @@ router.put('/:id/assign', requireRole('manager', 'admin'), (req: Request, res: R
     const db = getDb();
     const complaintId = parseInt(req.params.id);
 
-    const complaint = db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId) as Complaint | undefined;
+    const complaint = await db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId) as Complaint | undefined;
     if (!complaint) {
       res.status(404).json({ success: false, error: 'Complaint not found' });
       return;
@@ -673,7 +673,7 @@ router.put('/:id/assign', requireRole('manager', 'admin'), (req: Request, res: R
 
     // Role-based boundary enforcement: Managers can only assign complaints within their own department
     if (req.userRole === 'manager') {
-      const managerUser = db.prepare('SELECT department_id FROM users WHERE id = ?').get(req.userId) as { department_id: number | null } | undefined;
+      const managerUser = await db.prepare('SELECT department_id FROM users WHERE id = ?').get(req.userId) as { department_id: number | null } | undefined;
       const managerDeptId = managerUser?.department_id;
       if (!managerDeptId) {
         res.status(403).json({ success: false, error: 'Manager has no assigned department' });
@@ -690,7 +690,7 @@ router.put('/:id/assign', requireRole('manager', 'admin'), (req: Request, res: R
     }
 
     // Verify officer exists and belongs to department
-    const officer = db.prepare(`
+    const officer = await db.prepare(`
       SELECT id, department_id, role FROM users WHERE id = ? AND is_active = 1
     `).get(officer_id) as any;
 
@@ -700,7 +700,7 @@ router.put('/:id/assign', requireRole('manager', 'admin'), (req: Request, res: R
     }
 
     // Verify department exists
-    const dept = db.prepare('SELECT id FROM departments WHERE id = ? AND is_active = 1').get(department_id);
+    const dept = await db.prepare('SELECT id FROM departments WHERE id = ? AND is_active = 1').get(department_id);
     if (!dept) {
       res.status(400).json({ success: false, error: 'Invalid department' });
       return;
@@ -708,18 +708,18 @@ router.put('/:id/assign', requireRole('manager', 'admin'), (req: Request, res: R
 
     const now = new Date().toISOString().replace('T', ' ').split('.')[0];
 
-    const tx = db.transaction(() => {
+    const tx = db.transaction(async () => {
       // Update complaint
       const newStatus = complaint.status === 'submitted' || complaint.status === 'acknowledged' || complaint.status === 'reopened'
         ? 'assigned' : complaint.status;
 
-      db.prepare(`
+      await db.prepare(`
         UPDATE complaints SET department_id = ?, assigned_officer_id = ?, status = ?, updated_at = ?
         WHERE id = ?
       `).run(department_id, officer_id, newStatus, now, complaintId);
 
       // Assignment history
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO assignment_history 
         (complaint_id, previous_officer_id, new_officer_id, previous_department_id, new_department_id, assigned_by_user_id, reason, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -730,28 +730,28 @@ router.put('/:id/assign', requireRole('manager', 'admin'), (req: Request, res: R
 
       // Status history if status changed
       if (newStatus !== complaint.status) {
-        db.prepare(`
+        await db.prepare(`
           INSERT INTO status_history (complaint_id, previous_status, new_status, changed_by_user_id, reason, is_public, created_at)
           VALUES (?, ?, ?, ?, ?, 1, ?)
         `).run(complaintId, complaint.status, newStatus, req.userId, 'Complaint assigned to department', now);
       }
 
       // Audit log
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, created_at)
         VALUES (?, 'assign', 'complaint', ?, ?, ?)
       `).run(req.userId, complaintId, `Assigned to officer ${officer_id} in dept ${department_id}`, now);
 
       // Notify officer
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO notifications (user_id, title, message, type, related_complaint_id, created_at)
         VALUES (?, 'New Assignment', ?, 'info', ?, ?)
       `).run(officer_id, `You have been assigned complaint: ${complaint.title}`, complaintId, now);
     });
 
-    tx();
+    await tx();
 
-    const updated = db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId);
+    const updated = await db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId);
     res.json({ success: true, data: { complaint: updated }, message: 'Complaint assigned successfully' });
   } catch (err) {
     console.error('Assign complaint error:', err);
@@ -760,7 +760,7 @@ router.put('/:id/assign', requireRole('manager', 'admin'), (req: Request, res: R
 });
 
 // PUT /api/complaints/:id/priority — Update priority
-router.put('/:id/priority', requireRole('officer', 'manager', 'admin'), (req: Request, res: Response) => {
+router.put('/:id/priority', requireRole('officer', 'manager', 'admin'), async (req: Request, res: Response) => {
   try {
     const parsed = updatePrioritySchema.safeParse(req.body);
     if (!parsed.success) {
@@ -772,7 +772,7 @@ router.put('/:id/priority', requireRole('officer', 'manager', 'admin'), (req: Re
     const db = getDb();
     const complaintId = parseInt(req.params.id);
 
-    const complaint = db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId) as Complaint | undefined;
+    const complaint = await db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId) as Complaint | undefined;
     if (!complaint) {
       res.status(404).json({ success: false, error: 'Complaint not found' });
       return;
@@ -781,18 +781,18 @@ router.put('/:id/priority', requireRole('officer', 'manager', 'admin'), (req: Re
     const now = new Date().toISOString().replace('T', ' ').split('.')[0];
 
     // Recalculate target date based on new priority
-    const targetDate = calculateTargetDate(db, complaint.category, priority, complaint.created_at);
+    const targetDate = await calculateTargetDate(db, complaint.category, priority, complaint.created_at);
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE complaints SET priority = ?, target_resolution_date = ?, updated_at = ? WHERE id = ?
     `).run(priority, targetDate, now, complaintId);
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, created_at)
       VALUES (?, 'priority_change', 'complaint', ?, ?, ?)
     `).run(req.userId, complaintId, `Priority: ${complaint.priority} → ${priority}. ${reason || ''}`, now);
 
-    const updated = db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId);
+    const updated = await db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId);
     res.json({ success: true, data: { complaint: updated }, message: 'Priority updated' });
   } catch (err) {
     console.error('Update priority error:', err);
@@ -801,7 +801,7 @@ router.put('/:id/priority', requireRole('officer', 'manager', 'admin'), (req: Re
 });
 
 // POST /api/complaints/:id/updates — Add public update
-router.post('/:id/updates', requireRole('officer', 'manager', 'admin'), (req: Request, res: Response) => {
+router.post('/:id/updates', requireRole('officer', 'manager', 'admin'), async (req: Request, res: Response) => {
   try {
     const parsed = publicUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -811,7 +811,7 @@ router.post('/:id/updates', requireRole('officer', 'manager', 'admin'), (req: Re
 
     const db = getDb();
     const complaintId = parseInt(req.params.id);
-    const complaint = db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId) as Complaint | undefined;
+    const complaint = await db.prepare('SELECT * FROM complaints WHERE id = ?').get(complaintId) as Complaint | undefined;
 
     if (!complaint) {
       res.status(404).json({ success: false, error: 'Complaint not found' });
@@ -820,13 +820,13 @@ router.post('/:id/updates', requireRole('officer', 'manager', 'admin'), (req: Re
 
     const now = new Date().toISOString().replace('T', ' ').split('.')[0];
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO public_updates (complaint_id, user_id, message, created_at)
       VALUES (?, ?, ?, ?)
     `).run(complaintId, req.userId, parsed.data.message, now);
 
     // Notify citizen
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO notifications (user_id, title, message, type, related_complaint_id, created_at)
       VALUES (?, 'New Update on Your Complaint', ?, 'info', ?, ?)
     `).run(complaint.citizen_id, `New update on "${complaint.title}"`, complaintId, now);
@@ -839,7 +839,7 @@ router.post('/:id/updates', requireRole('officer', 'manager', 'admin'), (req: Re
 });
 
 // POST /api/complaints/:id/notes — Add internal note
-router.post('/:id/notes', requireRole('officer', 'manager', 'admin'), (req: Request, res: Response) => {
+router.post('/:id/notes', requireRole('officer', 'manager', 'admin'), async (req: Request, res: Response) => {
   try {
     const parsed = internalNoteSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -850,7 +850,7 @@ router.post('/:id/notes', requireRole('officer', 'manager', 'admin'), (req: Requ
     const db = getDb();
     const complaintId = parseInt(req.params.id);
 
-    const complaint = db.prepare('SELECT id FROM complaints WHERE id = ?').get(complaintId);
+    const complaint = await db.prepare('SELECT id FROM complaints WHERE id = ?').get(complaintId);
     if (!complaint) {
       res.status(404).json({ success: false, error: 'Complaint not found' });
       return;
@@ -858,7 +858,7 @@ router.post('/:id/notes', requireRole('officer', 'manager', 'admin'), (req: Requ
 
     const now = new Date().toISOString().replace('T', ' ').split('.')[0];
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO internal_notes (complaint_id, user_id, note, created_at)
       VALUES (?, ?, ?, ?)
     `).run(complaintId, req.userId, parsed.data.note, now);

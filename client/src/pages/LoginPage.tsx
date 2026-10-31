@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { login, quickLogin, isAuthenticated, user } = useAuth();
+  const { login, quickLogin, isAuthenticated, user, isDemoMode } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -70,58 +70,60 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* 1-Click Demo Login Personas */}
-        <div className="card" style={{
-          backgroundColor: 'var(--color-ivory)',
-          border: '2px solid var(--color-amber)',
-          marginBottom: 'var(--space-6)',
-          padding: 'var(--space-4)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: 'var(--space-3)' }}>
-            <Sparkles size={16} color="var(--color-amber-dark)" />
-            <strong style={{ fontSize: '0.875rem', color: 'var(--color-charcoal)' }}>
-              Hackathon 1-Click Persona Login:
-            </strong>
-          </div>
+        {isDemoMode && (
+          <div className="card" style={{
+            backgroundColor: 'var(--color-ivory)',
+            border: '2px solid var(--color-amber)',
+            marginBottom: 'var(--space-6)',
+            padding: 'var(--space-4)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: 'var(--space-3)' }}>
+              <Sparkles size={16} color="var(--color-amber-dark)" />
+              <strong style={{ fontSize: '0.875rem', color: 'var(--color-charcoal)' }}>
+                Hackathon 1-Click Persona Login:
+              </strong>
+            </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-2)' }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ justifyContent: 'flex-start', fontSize: '0.75rem' }}
-              onClick={() => handleQuick('citizen')}
-              disabled={loading}
-            >
-              <User size={13} /> Demo Citizen
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ justifyContent: 'flex-start', fontSize: '0.75rem' }}
-              onClick={() => handleQuick('officer')}
-              disabled={loading}
-            >
-              <UserCheck size={13} /> Field Officer
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ justifyContent: 'flex-start', fontSize: '0.75rem' }}
-              onClick={() => handleQuick('manager')}
-              disabled={loading}
-            >
-              <Briefcase size={13} /> Dept Manager
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ justifyContent: 'flex-start', fontSize: '0.75rem' }}
-              onClick={() => handleQuick('admin')}
-              disabled={loading}
-            >
-              <Shield size={13} /> System Admin
-            </button>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-2)' }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ justifyContent: 'flex-start', fontSize: '0.75rem' }}
+                onClick={() => handleQuick('citizen')}
+                disabled={loading}
+              >
+                <User size={13} /> Demo Citizen
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ justifyContent: 'flex-start', fontSize: '0.75rem' }}
+                onClick={() => handleQuick('officer')}
+                disabled={loading}
+              >
+                <UserCheck size={13} /> Field Officer
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ justifyContent: 'flex-start', fontSize: '0.75rem' }}
+                onClick={() => handleQuick('manager')}
+                disabled={loading}
+              >
+                <Briefcase size={13} /> Dept Manager
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ justifyContent: 'flex-start', fontSize: '0.75rem' }}
+                onClick={() => handleQuick('admin')}
+                disabled={loading}
+              >
+                <Shield size={13} /> System Admin
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>

@@ -12,27 +12,35 @@ interface AuthContextType {
   quickLogin: (role: UserRole) => Promise<boolean>;
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
+  isDemoMode: boolean;
 }
+
+export const isDemoModeEnabled = (): boolean => {
+  if (import.meta.env.DEV) {
+    return import.meta.env.VITE_ENABLE_DEMO_MODE !== 'false';
+  }
+  return import.meta.env.VITE_ENABLE_DEMO_MODE === 'true';
+};
 
 const DEMO_CREDENTIALS: Record<UserRole, { email: string; pass: string; title: string }> = {
   citizen: {
     email: 'citizen1@civictrack.demo',
-    pass: 'Citizen@CivicTrack2024',
+    pass: isDemoModeEnabled() ? 'Citizen@CivicTrack2024' : '',
     title: 'Citizen (Rahul Verma)',
   },
   officer: {
     email: 'officer.roads@civictrack.demo',
-    pass: 'Officer@CivicTrack2024',
+    pass: isDemoModeEnabled() ? 'Officer@CivicTrack2024' : '',
     title: 'Field Officer (Amit Singh)',
   },
   manager: {
     email: 'roads.manager@civictrack.demo',
-    pass: 'Manager@CivicTrack2024',
+    pass: isDemoModeEnabled() ? 'Manager@CivicTrack2024' : '',
     title: 'Dept Manager (Priya Sharma)',
   },
   admin: {
     email: 'admin@civictrack.demo',
-    pass: 'Admin@CivicTrack2024',
+    pass: isDemoModeEnabled() ? 'Admin@CivicTrack2024' : '',
     title: 'System Admin (Rajesh Kumar)',
   },
 };
@@ -87,7 +95,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const res = await authApi.register(data);
       if (res.data?.success && res.data?.data?.user) {
         setUser(res.data.data.user);
-        toast.success('Registration successful!');
+        toast.success('Registration successful! Welcome to CivicTrack.');
         return true;
       }
       return false;
@@ -111,8 +119,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const quickLogin = async (role: UserRole): Promise<boolean> => {
+    if (!isDemoModeEnabled()) {
+      toast.error('Quick demo persona switcher is disabled in production.');
+      return false;
+    }
     const creds = DEMO_CREDENTIALS[role];
-    if (!creds) return false;
+    if (!creds || !creds.pass) return false;
     const success = await login(creds.email, creds.pass);
     if (success) {
       toast.success(`Switched persona to: ${creds.title}`);
@@ -131,6 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         quickLogin,
         refreshUser,
         isAuthenticated: !!user,
+        isDemoMode: isDemoModeEnabled(),
       }}
     >
       {children}

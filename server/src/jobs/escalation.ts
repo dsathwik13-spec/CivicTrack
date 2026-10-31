@@ -4,13 +4,13 @@ import { getDb } from '../database/connection';
  * Check for overdue complaints and create escalation events.
  * Run periodically via cron or manual trigger.
  */
-export function runEscalationCheck(): void {
+export async function runEscalationCheck(): Promise<void> {
   try {
     const db = getDb();
     const now = new Date().toISOString().replace('T', ' ').split('.')[0];
 
     // Mark overdue complaints
-    db.prepare(`
+    await db.prepare(`
       UPDATE complaints 
       SET is_overdue = 1, updated_at = ?
       WHERE target_resolution_date IS NOT NULL
@@ -20,7 +20,7 @@ export function runEscalationCheck(): void {
     `).run(now, now);
 
     // Get newly overdue complaints that haven't been escalated at this level
-    const overdueComplaints = db.prepare(`
+    const overdueComplaints = await db.prepare(`
       SELECT c.*, d.head_user_id as dept_head_id
       FROM complaints c
       LEFT JOIN departments d ON c.department_id = d.id
@@ -44,7 +44,7 @@ export function runEscalationCheck(): void {
           )
         : 0;
 
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO escalation_events 
         (complaint_id, escalation_level, escalated_to_user_id, reason, threshold_hours, created_at)
         VALUES (?, 1, ?, ?, ?, ?)
@@ -57,7 +57,7 @@ export function runEscalationCheck(): void {
       );
 
       // Notify the escalation target
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO notifications 
         (user_id, title, message, type, related_complaint_id, created_at)
         VALUES (?, 'SLA Escalation', ?, 'warning', ?, ?)
@@ -70,7 +70,7 @@ export function runEscalationCheck(): void {
     }
 
     // Level 2 escalation: complaints overdue for more than 2x the target
-    const severelyOverdue = db.prepare(`
+    const severelyOverdue = await db.prepare(`
       SELECT c.*, d.head_user_id as dept_head_id
       FROM complaints c
       LEFT JOIN departments d ON c.department_id = d.id
@@ -91,13 +91,13 @@ export function runEscalationCheck(): void {
 
     for (const complaint of severelyOverdue) {
       // Escalate to admin (user id 1 as fallback)
-      const adminUser = db.prepare(`
+      const adminUser = await db.prepare(`
         SELECT id FROM users WHERE role = 'admin' AND is_active = 1 LIMIT 1
       `).get() as { id: number } | undefined;
 
       const escalateToUser = adminUser?.id || 1;
 
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO escalation_events 
         (complaint_id, escalation_level, escalated_to_user_id, reason, threshold_hours, created_at)
         VALUES (?, 2, ?, ?, ?, ?)
@@ -109,7 +109,7 @@ export function runEscalationCheck(): void {
         now
       );
 
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO notifications 
         (user_id, title, message, type, related_complaint_id, created_at)
         VALUES (?, 'Critical SLA Breach', ?, 'error', ?, ?)

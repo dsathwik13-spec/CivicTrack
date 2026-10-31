@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Public Grievance Tracker — CivicTrack",
   "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "cd client && npm run dev",
@@ -13,10 +17,11 @@
     "db:init": "cd server && npm run db:init",
     "db:seed": "cd server && npm run db:seed",
     "db:reset": "cd server && npm run db:reset",
+    "db:migrate-pg": "cd server && npx tsx src/database/migrate-to-supabase.ts",
     "test": "cd server && npm test",
     "test:client": "cd client && npm test",
     "lint": "cd client && npm run lint",
-    "typecheck": "cd client && npx tsc --noEmit && cd ../server && npx tsc --noEmit",
+    "typecheck": "npm run build",
     "setup": "npm install && cd client && npm install && cd ../server && npm install && npm run db:init && npm run db:seed"
   },
   "devDependencies": {

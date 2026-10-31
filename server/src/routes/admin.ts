@@ -6,7 +6,7 @@ import { createDepartmentSchema, updateUserRoleSchema } from '../validation/sche
 const router = Router();
 
 // GET /api/admin/users — List all users
-router.get('/users', requireRole('admin'), (req: Request, res: Response) => {
+router.get('/users', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -28,10 +28,10 @@ router.get('/users', requireRole('admin'), (req: Request, res: Response) => {
       params.push(role);
     }
 
-    const total = db.prepare(`SELECT COUNT(*) as count FROM users u ${where}`).get(...params) as { count: number };
+    const total = await db.prepare(`SELECT COUNT(*) as count FROM users u ${where}`).get(...params) as { count: number };
     const offset = (page - 1) * pageSize;
 
-    const users = db.prepare(`
+    const users = await db.prepare(`
       SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.role,
              u.department_id, u.is_active, u.created_at,
              d.name as department_name
@@ -59,7 +59,7 @@ router.get('/users', requireRole('admin'), (req: Request, res: Response) => {
 });
 
 // PUT /api/admin/users/:id/role — Update user role
-router.put('/users/:id/role', requireRole('admin'), (req: Request, res: Response) => {
+router.put('/users/:id/role', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const parsed = updateUserRoleSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -77,11 +77,11 @@ router.put('/users/:id/role', requireRole('admin'), (req: Request, res: Response
     }
 
     const now = new Date().toISOString().replace('T', ' ').split('.')[0];
-    db.prepare(`
+    await db.prepare(`
       UPDATE users SET role = ?, department_id = ?, updated_at = ? WHERE id = ?
     `).run(parsed.data.role, parsed.data.department_id || null, now, userId);
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, created_at)
       VALUES (?, 'update_role', 'user', ?, ?, ?)
     `).run(req.userId, userId, `Role changed to ${parsed.data.role}`, now);
@@ -94,7 +94,7 @@ router.put('/users/:id/role', requireRole('admin'), (req: Request, res: Response
 });
 
 // PUT /api/admin/users/:id/status — Toggle user active status
-router.put('/users/:id/status', requireRole('admin'), (req: Request, res: Response) => {
+router.put('/users/:id/status', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const userId = parseInt(req.params.id);
@@ -104,7 +104,7 @@ router.put('/users/:id/status', requireRole('admin'), (req: Request, res: Respon
       return;
     }
 
-    const user = db.prepare('SELECT is_active FROM users WHERE id = ?').get(userId) as { is_active: number } | undefined;
+    const user = await db.prepare('SELECT is_active FROM users WHERE id = ?').get(userId) as { is_active: number } | undefined;
     if (!user) {
       res.status(404).json({ success: false, error: 'User not found' });
       return;
@@ -113,7 +113,7 @@ router.put('/users/:id/status', requireRole('admin'), (req: Request, res: Respon
     const newStatus = user.is_active ? 0 : 1;
     const now = new Date().toISOString().replace('T', ' ').split('.')[0];
 
-    db.prepare('UPDATE users SET is_active = ?, updated_at = ? WHERE id = ?').run(newStatus, now, userId);
+    await db.prepare('UPDATE users SET is_active = ?, updated_at = ? WHERE id = ?').run(newStatus, now, userId);
 
     res.json({ success: true, message: newStatus ? 'User activated' : 'User deactivated' });
   } catch (err) {
@@ -125,10 +125,10 @@ router.put('/users/:id/status', requireRole('admin'), (req: Request, res: Respon
 // ─── Departments ───
 
 // GET /api/admin/departments
-router.get('/departments', requireAuth, (req: Request, res: Response) => {
+router.get('/departments', requireAuth, async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    const departments = db.prepare(`
+    const departments = await db.prepare(`
       SELECT d.*, 
              u.first_name || ' ' || u.last_name as head_name,
              (SELECT COUNT(*) FROM users WHERE department_id = d.id AND is_active = 1) as member_count,
@@ -147,7 +147,7 @@ router.get('/departments', requireAuth, (req: Request, res: Response) => {
 });
 
 // POST /api/admin/departments
-router.post('/departments', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/departments', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const parsed = createDepartmentSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -156,14 +156,14 @@ router.post('/departments', requireRole('admin'), (req: Request, res: Response) 
     }
 
     const db = getDb();
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO departments (name, description) VALUES (?, ?)
     `).run(parsed.data.name, parsed.data.description);
 
-    const department = db.prepare('SELECT * FROM departments WHERE id = ?').get(result.lastInsertRowid);
+    const department = await db.prepare('SELECT * FROM departments WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ success: true, data: { department } });
   } catch (err: any) {
-    if (err.message?.includes('UNIQUE')) {
+    if (err.message?.includes('UNIQUE') || err.message?.includes('unique')) {
       res.status(409).json({ success: false, error: 'Department name already exists' });
       return;
     }
@@ -173,12 +173,12 @@ router.post('/departments', requireRole('admin'), (req: Request, res: Response) 
 });
 
 // GET /api/admin/departments/:id/officers
-router.get('/departments/:id/officers', requireRole('officer', 'manager', 'admin'), (req: Request, res: Response) => {
+router.get('/departments/:id/officers', requireRole('officer', 'manager', 'admin'), async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const deptId = parseInt(req.params.id);
 
-    const officers = db.prepare(`
+    const officers = await db.prepare(`
       SELECT id, first_name, last_name, email, role
       FROM users
       WHERE department_id = ? AND is_active = 1 AND role IN ('officer', 'manager')
@@ -193,16 +193,16 @@ router.get('/departments/:id/officers', requireRole('officer', 'manager', 'admin
 });
 
 // ─── Audit Logs ───
-router.get('/audit-logs', requireRole('admin'), (req: Request, res: Response) => {
+router.get('/audit-logs', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 50));
     const offset = (page - 1) * pageSize;
 
-    const total = db.prepare('SELECT COUNT(*) as count FROM audit_logs').get() as { count: number };
+    const total = await db.prepare('SELECT COUNT(*) as count FROM audit_logs').get() as { count: number };
 
-    const logs = db.prepare(`
+    const logs = await db.prepare(`
       SELECT al.*, u.first_name || ' ' || u.last_name as user_name, u.email as user_email
       FROM audit_logs al
       LEFT JOIN users u ON al.user_id = u.id

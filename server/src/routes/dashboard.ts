@@ -5,7 +5,7 @@ import { requireRole, optionalAuth } from '../middleware/auth';
 const router = Router();
 
 // GET /api/dashboard/stats — Aggregated grievance statistics
-router.get('/stats', optionalAuth, (req: Request, res: Response) => {
+router.get('/stats', optionalAuth, async (req: Request, res: Response) => {
   try {
     const db = getDb();
 
@@ -23,25 +23,25 @@ router.get('/stats', optionalAuth, (req: Request, res: Response) => {
       }
     }
 
-    const total = db.prepare(`SELECT COUNT(*) as count FROM complaints c ${where}`).get(...params) as { count: number };
+    const total = await db.prepare(`SELECT COUNT(*) as count FROM complaints c ${where}`).get(...params) as { count: number };
     
-    const statusCounts = db.prepare(`
+    const statusCounts = await db.prepare(`
       SELECT status, COUNT(*) as count FROM complaints c ${where} GROUP BY status
     `).all(...params) as { status: string; count: number }[];
 
-    const overdue = db.prepare(`
+    const overdue = await db.prepare(`
       SELECT COUNT(*) as count FROM complaints c ${where} AND c.is_overdue = 1
     `).get(...params) as { count: number };
 
     // Average resolution time (in hours)
-    const avgRes = db.prepare(`
+    const avgRes = await db.prepare(`
       SELECT AVG(
         (julianday(c.resolved_at) - julianday(c.created_at)) * 24
       ) as avg_hours
       FROM complaints c ${where} AND c.resolved_at IS NOT NULL
     `).get(...params) as { avg_hours: number | null };
 
-    const resolved = db.prepare(`
+    const resolved = await db.prepare(`
       SELECT COUNT(*) as count FROM complaints c ${where} AND c.status IN ('resolved', 'closed')
     `).get(...params) as { count: number };
 
@@ -74,7 +74,7 @@ router.get('/stats', optionalAuth, (req: Request, res: Response) => {
 });
 
 // GET /api/dashboard/analytics
-router.get('/analytics', optionalAuth, (req: Request, res: Response) => {
+router.get('/analytics', optionalAuth, async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const dateFrom = req.query.date_from as string || '';
@@ -92,28 +92,28 @@ router.get('/analytics', optionalAuth, (req: Request, res: Response) => {
     }
 
     // Complaints by category
-    const byCategory = db.prepare(`
+    const byCategory = await db.prepare(`
       SELECT category, COUNT(*) as count 
       FROM complaints c WHERE 1=1 ${dateWhere}
       GROUP BY category ORDER BY count DESC
     `).all(...dateParams);
 
     // Complaints by status
-    const byStatus = db.prepare(`
+    const byStatus = await db.prepare(`
       SELECT status, COUNT(*) as count 
       FROM complaints c WHERE 1=1 ${dateWhere}
       GROUP BY status ORDER BY count DESC
     `).all(...dateParams);
 
     // Complaints by priority
-    const byPriority = db.prepare(`
+    const byPriority = await db.prepare(`
       SELECT priority, COUNT(*) as count 
       FROM complaints c WHERE 1=1 ${dateWhere}
       GROUP BY priority ORDER BY count DESC
     `).all(...dateParams);
 
     // Department workload
-    const byDepartment = db.prepare(`
+    const byDepartment = await db.prepare(`
       SELECT d.name, COUNT(c.id) as total,
              SUM(CASE WHEN c.status IN ('submitted','acknowledged','assigned','in_progress','awaiting_information','reopened') THEN 1 ELSE 0 END) as open_count,
              SUM(CASE WHEN c.status IN ('resolved','closed') THEN 1 ELSE 0 END) as resolved_count,
@@ -121,12 +121,12 @@ router.get('/analytics', optionalAuth, (req: Request, res: Response) => {
       FROM complaints c
       LEFT JOIN departments d ON c.department_id = d.id
       WHERE c.department_id IS NOT NULL ${dateWhere}
-      GROUP BY c.department_id
+      GROUP BY c.department_id, d.name
       ORDER BY total DESC
     `).all(...dateParams);
 
     // Complaints over time (last 30 days)
-    const overTime = db.prepare(`
+    const overTime = await db.prepare(`
       SELECT date(c.created_at) as date, COUNT(*) as count
       FROM complaints c
       WHERE c.created_at >= date('now', '-30 days') ${dateWhere}
@@ -135,7 +135,7 @@ router.get('/analytics', optionalAuth, (req: Request, res: Response) => {
     `).all(...dateParams);
 
     // Resolution time by category
-    const resolutionByCategory = db.prepare(`
+    const resolutionByCategory = await db.prepare(`
       SELECT c.category,
              AVG((julianday(c.resolved_at) - julianday(c.created_at)) * 24) as avg_hours,
              COUNT(*) as resolved_count
@@ -145,7 +145,7 @@ router.get('/analytics', optionalAuth, (req: Request, res: Response) => {
     `).all(...dateParams);
 
     // SLA compliance
-    const slaCompliance = db.prepare(`
+    const slaCompliance = await db.prepare(`
       SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN c.is_overdue = 0 AND c.status IN ('resolved','closed') THEN 1 ELSE 0 END) as within_sla,
@@ -173,11 +173,11 @@ router.get('/analytics', optionalAuth, (req: Request, res: Response) => {
 });
 
 // GET /api/dashboard/escalations
-router.get('/escalations', requireRole('officer', 'manager', 'admin'), (req: Request, res: Response) => {
+router.get('/escalations', requireRole('officer', 'manager', 'admin'), async (req: Request, res: Response) => {
   try {
     const db = getDb();
 
-    const overdueComplaints = db.prepare(`
+    const overdueComplaints = await db.prepare(`
       SELECT c.*, d.name as department_name,
              u_officer.first_name || ' ' || u_officer.last_name as officer_name,
              u_citizen.first_name || ' ' || u_citizen.last_name as citizen_name
@@ -190,7 +190,7 @@ router.get('/escalations', requireRole('officer', 'manager', 'admin'), (req: Req
       ORDER BY c.target_resolution_date ASC
     `).all();
 
-    const recentEscalations = db.prepare(`
+    const recentEscalations = await db.prepare(`
       SELECT e.*, c.grievance_id, c.title as complaint_title,
              u.first_name || ' ' || u.last_name as escalated_to_name
       FROM escalation_events e

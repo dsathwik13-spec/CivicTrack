@@ -11,7 +11,7 @@ import {
 import toast from 'react-hot-toast';
 
 export const SubmitPage: React.FC = () => {
-  const { user, isAuthenticated, quickLogin } = useAuth();
+  const { user, isAuthenticated, quickLogin, isDemoMode } = useAuth();
   const navigate = useNavigate();
 
   const [title, setTitle] = useState('');
@@ -231,49 +231,51 @@ export const SubmitPage: React.FC = () => {
         </div>
 
         {/* Demo Fast-Fill Bar */}
-        <div style={{
-          backgroundColor: 'var(--color-bg-card)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-md)',
-          padding: 'var(--space-3) var(--space-4)',
-          marginBottom: 'var(--space-6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 'var(--space-2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', fontWeight: 600 }}>
-            <Sparkles size={16} color="var(--color-amber)" />
-            <span>Hackathon Quick-Fill Presets:</span>
+        {isDemoMode && (
+          <div style={{
+            backgroundColor: 'var(--color-bg-card)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-3) var(--space-4)',
+            marginBottom: 'var(--space-6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 'var(--space-2)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', fontWeight: 600 }}>
+              <Sparkles size={16} color="var(--color-amber)" />
+              <span>Hackathon Quick-Fill Presets:</span>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => loadPreset('pothole')}
+                className="btn btn-ghost btn-sm"
+                style={{ border: '1px solid var(--color-border-light)' }}
+              >
+                🚧 Pothole Incident
+              </button>
+              <button
+                type="button"
+                onClick={() => loadPreset('water')}
+                className="btn btn-ghost btn-sm"
+                style={{ border: '1px solid var(--color-border-light)' }}
+              >
+                💧 Water Pipe Burst
+              </button>
+              <button
+                type="button"
+                onClick={() => loadPreset('light')}
+                className="btn btn-ghost btn-sm"
+                style={{ border: '1px solid var(--color-border-light)' }}
+              >
+                💡 Streetlight Blackout
+              </button>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => loadPreset('pothole')}
-              className="btn btn-ghost btn-sm"
-              style={{ border: '1px solid var(--color-border-light)' }}
-            >
-              🚧 Pothole Incident
-            </button>
-            <button
-              type="button"
-              onClick={() => loadPreset('water')}
-              className="btn btn-ghost btn-sm"
-              style={{ border: '1px solid var(--color-border-light)' }}
-            >
-              💧 Water Pipe Burst
-            </button>
-            <button
-              type="button"
-              onClick={() => loadPreset('light')}
-              className="btn btn-ghost btn-sm"
-              style={{ border: '1px solid var(--color-border-light)' }}
-            >
-              💡 Streetlight Blackout
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Auth notice if citizen not logged in */}
         {!isAuthenticated && (
@@ -294,17 +296,19 @@ export const SubmitPage: React.FC = () => {
               <div>
                 <strong style={{ fontSize: '0.875rem' }}>Login Recommended for Verified Tracking</strong>
                 <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--color-charcoal)' }}>
-                  Sign in or use 1-click Demo Citizen Login to receive automated SMS/status updates.
+                  Sign in or create an account to receive automated status updates and track grievances.
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              className="btn btn-sm btn-primary"
-              onClick={() => quickLogin('citizen')}
-            >
-              ⚡ Quick Login as Demo Citizen
-            </button>
+            {isDemoMode && (
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={() => quickLogin('citizen')}
+              >
+                ⚡ Quick Login as Demo Citizen
+              </button>
+            )}
           </div>
         )}
 

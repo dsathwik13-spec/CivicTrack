@@ -24,7 +24,7 @@ router.post('/register', async (req: Request, res: Response) => {
     const db = getDb();
 
     // Check if email exists
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(email);
     if (existing) {
       res.status(409).json({ success: false, error: 'An account with this email already exists' });
       return;
@@ -32,7 +32,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const password_hash = bcrypt.hashSync(password, 12);
 
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO users (email, password_hash, first_name, last_name, phone, role)
       VALUES (?, ?, ?, ?, ?, 'citizen')
     `).run(email, password_hash, first_name, last_name, phone || null);
@@ -41,7 +41,7 @@ router.post('/register', async (req: Request, res: Response) => {
     req.session.userId = result.lastInsertRowid as number;
     req.session.userRole = 'citizen';
 
-    const user = db.prepare(`
+    const user = await db.prepare(`
       SELECT id, email, first_name, last_name, phone, role, department_id, is_active, created_at
       FROM users WHERE id = ?
     `).get(result.lastInsertRowid) as UserPublic;
@@ -69,7 +69,7 @@ router.post('/login', async (req: Request, res: Response) => {
     const { email, password } = parsed.data;
     const db = getDb();
 
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
+    const user = await db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
 
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
       res.status(401).json({ success: false, error: 'Invalid email or password' });
@@ -109,23 +109,28 @@ router.post('/logout', (req: Request, res: Response) => {
 });
 
 // GET /api/auth/me
-router.get('/me', requireAuth, (req: Request, res: Response) => {
-  const db = getDb();
-  const user = db.prepare(`
-    SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.role, 
-           u.department_id, u.is_active, u.created_at,
-           d.name as department_name
-    FROM users u
-    LEFT JOIN departments d ON u.department_id = d.id
-    WHERE u.id = ?
-  `).get(req.userId) as UserPublic | undefined;
+router.get('/me', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const user = await db.prepare(`
+      SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.role, 
+             u.department_id, u.is_active, u.created_at,
+             d.name as department_name
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id = ?
+    `).get(req.userId) as UserPublic | undefined;
 
-  if (!user) {
-    res.status(404).json({ success: false, error: 'User not found' });
-    return;
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+
+    res.json({ success: true, data: { user } });
+  } catch (err) {
+    console.error('Auth /me error:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch user profile' });
   }
-
-  res.json({ success: true, data: { user } });
 });
 
 export default router;

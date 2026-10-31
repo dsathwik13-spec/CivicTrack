@@ -9,9 +9,9 @@ interface DemoSwitcherModalProps {
 }
 
 export const DemoSwitcherModal: React.FC<DemoSwitcherModalProps> = ({ isOpen, onClose }) => {
-  const { user, quickLogin } = useAuth();
+  const { user, quickLogin, isDemoMode } = useAuth();
 
-  if (!isOpen) return null;
+  if (!isOpen || !isDemoMode) return null;
 
   const roles: { role: UserRole; title: string; subtitle: string; icon: any; desc: string; access: string }[] = [
     {
