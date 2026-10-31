@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { complaintsApi, adminApi } from '../lib/api';
-import { Complaint, ComplaintStatus, ComplaintPriority } from '../types';
+import { Complaint, ComplaintStatus, ComplaintPriority, VALID_TRANSITIONS, STATUS_LABELS } from '../types';
 import { StatusBadge, PriorityBadge, CategoryBadge } from '../components/StatusBadge';
 import { SLACounter } from '../components/SLACounter';
 import { 
@@ -58,7 +58,8 @@ export const OfficerDashboard: React.FC = () => {
 
   const handleOpenAction = (item: Complaint) => {
     setSelectedComplaint(item);
-    setNewStatus(item.status === 'submitted' ? 'acknowledged' : 'in_progress');
+    const validNext = VALID_TRANSITIONS[item.status as ComplaintStatus] || [];
+    setNewStatus((validNext[0] || item.status) as ComplaintStatus);
     setStatusReason('');
     setResolutionNotes('');
     setPublicUpdateMessage('');
@@ -401,11 +402,23 @@ export const OfficerDashboard: React.FC = () => {
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value as ComplaintStatus)}
                   >
-                    <option value="acknowledged">Acknowledged (Inspected by Team)</option>
-                    <option value="in_progress">In Progress (Field Work Underway)</option>
-                    <option value="awaiting_information">Awaiting Information from Citizen</option>
-                    <option value="resolved">Resolved (Repairs Finished)</option>
-                    <option value="closed">Closed (Verified & Settled)</option>
+                    {(() => {
+                      const validOptions = selectedComplaint
+                        ? (VALID_TRANSITIONS[selectedComplaint.status as ComplaintStatus] || [])
+                        : [];
+                      if (validOptions.length === 0 && selectedComplaint) {
+                        return (
+                          <option value={selectedComplaint.status}>
+                            {STATUS_LABELS[selectedComplaint.status as ComplaintStatus] || selectedComplaint.status} (Final State)
+                          </option>
+                        );
+                      }
+                      return validOptions.map((st) => (
+                        <option key={st} value={st}>
+                          {STATUS_LABELS[st] || st}
+                        </option>
+                      ));
+                    })()}
                   </select>
                 </div>
 

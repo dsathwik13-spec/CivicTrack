@@ -112,6 +112,160 @@ router.post('/', requireAuth, (req: Request, res: Response) => {
   }
 });
 
+// GET /api/complaints/my — List complaints filed by the currently authenticated user
+router.get('/my', requireAuth, (req: Request, res: Response) => {
+  try {
+    const parsed = complaintQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: 'Invalid query parameters' });
+      return;
+    }
+
+    const { page, pageSize, search, category, status, priority, sort, order, date_from, date_to } = parsed.data;
+    const db = getDb();
+
+    // STRICT OWNER CHECK: Always filter by the authenticated user's ID
+    let where = 'WHERE c.citizen_id = ?';
+    const params: any[] = [req.userId];
+
+    if (search) {
+      where += ' AND (c.grievance_id LIKE ? OR c.title LIKE ? OR c.description LIKE ? OR c.category LIKE ? OR c.location LIKE ?)';
+      const term = `%${search}%`;
+      params.push(term, term, term, term, term);
+    }
+
+    if (category) {
+      where += ' AND c.category = ?';
+      params.push(category);
+    }
+
+    if (status) {
+      const statuses = status.split(',');
+      where += ` AND c.status IN (${statuses.map(() => '?').join(',')})`;
+      params.push(...statuses);
+    }
+
+    if (priority) {
+      where += ' AND c.priority = ?';
+      params.push(priority);
+    }
+
+    if (date_from) {
+      where += ' AND c.created_at >= ?';
+      params.push(date_from);
+    }
+
+    if (date_to) {
+      where += ' AND c.created_at <= ?';
+      params.push(date_to + ' 23:59:59');
+    }
+
+    const validSorts = ['created_at', 'updated_at', 'priority', 'status', 'category', 'title'];
+    const sortCol = validSorts.includes(sort) ? sort : 'created_at';
+    const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
+
+    const countResult = db.prepare(`
+      SELECT COUNT(*) as total FROM complaints c ${where}
+    `).get(...params) as { total: number };
+
+    const offset = (page - 1) * pageSize;
+
+    const complaints = db.prepare(`
+      SELECT c.*, 
+             d.name as department_name,
+             u_citizen.first_name || ' ' || u_citizen.last_name as citizen_name,
+             u_officer.first_name || ' ' || u_officer.last_name as officer_name
+      FROM complaints c
+      LEFT JOIN departments d ON c.department_id = d.id
+      LEFT JOIN users u_citizen ON c.citizen_id = u_citizen.id
+      LEFT JOIN users u_officer ON c.assigned_officer_id = u_officer.id
+      ${where}
+      ORDER BY c.${sortCol} ${sortOrder}
+      LIMIT ? OFFSET ?
+    `).all(...params, pageSize, offset);
+
+    res.json({
+      success: true,
+      data: {
+        items: complaints,
+        total: countResult.total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(countResult.total / pageSize),
+      },
+    });
+  } catch (err) {
+    console.error('List my complaints error:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch your registered complaints' });
+  }
+});
+
+// GET /api/complaints/public — Public feed for home page and city portal
+router.get('/public', optionalAuth, (req: Request, res: Response) => {
+  try {
+    const parsed = complaintQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: 'Invalid query parameters' });
+      return;
+    }
+
+    const { page, pageSize, search, category, status } = parsed.data;
+    const db = getDb();
+
+    let where = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (search) {
+      where += ' AND (c.grievance_id LIKE ? OR c.title LIKE ? OR c.description LIKE ? OR c.category LIKE ? OR c.location LIKE ?)';
+      const term = `%${search}%`;
+      params.push(term, term, term, term, term);
+    }
+
+    if (category) {
+      where += ' AND c.category = ?';
+      params.push(category);
+    }
+
+    if (status) {
+      const statuses = status.split(',');
+      where += ` AND c.status IN (${statuses.map(() => '?').join(',')})`;
+      params.push(...statuses);
+    }
+
+    const countResult = db.prepare(`
+      SELECT COUNT(*) as total FROM complaints c ${where}
+    `).get(...params) as { total: number };
+
+    const offset = (page - 1) * pageSize;
+
+    const complaints = db.prepare(`
+      SELECT c.id, c.grievance_id, c.title, c.description, c.category, c.priority, c.status,
+             c.location, c.city, c.incident_date, c.target_resolution_date, c.resolved_at,
+             c.resolution_notes, c.is_overdue, c.created_at, c.updated_at,
+             d.name as department_name
+      FROM complaints c
+      LEFT JOIN departments d ON c.department_id = d.id
+      ${where}
+      ORDER BY c.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, pageSize, offset);
+
+    res.json({
+      success: true,
+      data: {
+        items: complaints,
+        total: countResult.total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(countResult.total / pageSize),
+      },
+    });
+  } catch (err) {
+    console.error('List public complaints error:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch public complaints' });
+  }
+});
+
 // GET /api/complaints — List complaints with filters
 router.get('/', requireAuth, (req: Request, res: Response) => {
   try {
@@ -121,14 +275,14 @@ router.get('/', requireAuth, (req: Request, res: Response) => {
       return;
     }
 
-    const { page, pageSize, search, category, status, priority, department_id, sort, order, date_from, date_to, overdue } = parsed.data;
+    const { page, pageSize, search, category, status, priority, department_id, sort, order, date_from, date_to, overdue, mine } = parsed.data;
     const db = getDb();
 
     let where = 'WHERE 1=1';
     const params: any[] = [];
 
-    // Citizens can only see their own
-    if (req.userRole === 'citizen') {
+    // Citizens or explicitly requesting own complaints can only see their own
+    if (req.userRole === 'citizen' || mine === 'true') {
       where += ' AND c.citizen_id = ?';
       params.push(req.userId);
     }
@@ -145,9 +299,9 @@ router.get('/', requireAuth, (req: Request, res: Response) => {
     // Admins see everything
 
     if (search) {
-      where += ' AND (c.grievance_id LIKE ? OR c.title LIKE ? OR c.description LIKE ?)';
+      where += ' AND (c.grievance_id LIKE ? OR c.title LIKE ? OR c.description LIKE ? OR c.category LIKE ? OR c.location LIKE ?)';
       const term = `%${search}%`;
-      params.push(term, term, term);
+      params.push(term, term, term, term, term);
     }
 
     if (category) {
@@ -515,6 +669,24 @@ router.put('/:id/assign', requireRole('manager', 'admin'), (req: Request, res: R
     if (!complaint) {
       res.status(404).json({ success: false, error: 'Complaint not found' });
       return;
+    }
+
+    // Role-based boundary enforcement: Managers can only assign complaints within their own department
+    if (req.userRole === 'manager') {
+      const managerUser = db.prepare('SELECT department_id FROM users WHERE id = ?').get(req.userId) as { department_id: number | null } | undefined;
+      const managerDeptId = managerUser?.department_id;
+      if (!managerDeptId) {
+        res.status(403).json({ success: false, error: 'Manager has no assigned department' });
+        return;
+      }
+      if (department_id !== managerDeptId) {
+        res.status(403).json({ success: false, error: 'Managers can only assign complaints to their own department' });
+        return;
+      }
+      if (complaint.department_id !== null && complaint.department_id !== undefined && complaint.department_id !== managerDeptId) {
+        res.status(403).json({ success: false, error: 'Cannot reassign complaints belonging to another department' });
+        return;
+      }
     }
 
     // Verify officer exists and belongs to department

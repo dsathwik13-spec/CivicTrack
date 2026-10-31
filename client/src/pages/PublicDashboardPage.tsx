@@ -34,26 +34,29 @@ export const PublicDashboardPage: React.FC = () => {
     fetchData();
   }, []);
 
-  const categoryData = analytics?.byCategory?.map((item: any) => ({
+  const categoryData = analytics?.byCategory?.length ? analytics.byCategory.map((item: any) => ({
     name: item.category.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
     count: item.count,
-  })) || [
-    { name: 'Roads & Potholes', count: 420 },
-    { name: 'Water Supply', count: 310 },
-    { name: 'Sanitation & Waste', count: 285 },
-    { name: 'Streetlights', count: 215 },
-    { name: 'Drainage', count: 180 },
-    { name: 'Public Works', count: 72 },
+  })) : [
+    { name: 'Roads & Potholes', count: 0 },
+    { name: 'Water Supply', count: 0 },
+    { name: 'Sanitation & Waste', count: 0 },
+    { name: 'Streetlights', count: 0 },
+    { name: 'Drainage', count: 0 },
+    { name: 'Public Infrastructure', count: 0 },
   ];
 
-  const statusData = [
-    { name: 'Resolved / Closed', value: 1324 },
-    { name: 'In Progress Repairs', value: 96 },
-    { name: 'Assigned / Scheduled', value: 48 },
-    { name: 'Under Initial Review', value: 14 },
+  const statusData = analytics?.byStatus?.length ? analytics.byStatus.map((item: any) => ({
+    name: item.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+    value: item.count,
+  })) : [
+    { name: 'Resolved / Closed', value: (stats?.resolved || 0) + (stats?.closed || 0) },
+    { name: 'In Progress Repairs', value: stats?.inProgress || 0 },
+    { name: 'Assigned / Scheduled', value: stats?.assigned || 0 },
+    { name: 'Submitted / Review', value: (stats?.submitted || 0) + (stats?.acknowledged || 0) },
   ];
 
-  const COLORS = ['#326B50', '#D7A45B', '#5a7fa8', '#706C63'];
+  const COLORS = ['#326B50', '#D7A45B', '#5a7fa8', '#706C63', '#a85a5a', '#63706c'];
 
   return (
     <div className="container" style={{ padding: 'var(--space-8) var(--space-4) var(--space-16)' }}>
@@ -155,7 +158,7 @@ export const PublicDashboardPage: React.FC = () => {
                   paddingAngle={4}
                   dataKey="value"
                 >
-                  {statusData.map((entry, index) => (
+                  {statusData.map((_entry: { name: string; value: number }, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

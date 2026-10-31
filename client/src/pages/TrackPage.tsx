@@ -22,8 +22,21 @@ export const TrackPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Demo grievance IDs for instant 1-click test
-  const demoIds = ['CT-DEMO001', 'CT-DEMO002', 'CT-DEMO003', 'CT-DEMO004'];
+  // Real recent grievance IDs for instant 1-click test
+  const [demoIds, setDemoIds] = useState<string[]>([
+    'CT-QSJMFJTAH7',
+    'CT-9-TOEL8UAG',
+    'CT-GEROZICQVU',
+    'CT-3ZGNDLMWJ5',
+  ]);
+
+  useEffect(() => {
+    complaintsApi.public({ pageSize: '4' }).then((res) => {
+      if (res.data?.success && res.data.data.items?.length > 0) {
+        setDemoIds(res.data.data.items.map((i: any) => i.grievance_id));
+      }
+    }).catch(() => {});
+  }, []);
 
   const fetchComplaint = async (targetId: string) => {
     if (!targetId.trim()) return;

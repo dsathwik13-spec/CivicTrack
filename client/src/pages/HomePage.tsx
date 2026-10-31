@@ -22,10 +22,16 @@ export const HomePage: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Fetch public list
-        const complaintsRes = await complaintsApi.list({ pageSize: '6', category: selectedCategory });
+        // Fetch public complaints feed and live city stats
+        const [complaintsRes, statsRes] = await Promise.all([
+          complaintsApi.public({ pageSize: '6', category: selectedCategory }),
+          dashboardApi.stats().catch(() => null),
+        ]);
         if (complaintsRes.data?.success) {
           setRecentComplaints(complaintsRes.data.data.items || []);
+        }
+        if (statsRes?.data?.success) {
+          setStats(statsRes.data.data);
         }
       } catch (err) {
         console.error('Failed to load home data:', err);
@@ -188,8 +194,8 @@ export const HomePage: React.FC = () => {
                 <span className="stat-label">Total Registered</span>
                 <Building2 size={20} color="var(--color-forest)" />
               </div>
-              <div className="stat-value">1,482</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Across all 15 Municipal Wards</div>
+              <div className="stat-value">{stats ? stats.total.toLocaleString() : '1,482'}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Across all Municipal Wards</div>
             </div>
 
             <div className="card stat-card" style={{ boxShadow: 'var(--shadow-md)', borderTop: '3px solid var(--color-success)' }}>
@@ -197,7 +203,9 @@ export const HomePage: React.FC = () => {
                 <span className="stat-label">SLA Resolution Rate</span>
                 <CheckCircle2 size={20} color="var(--color-success)" />
               </div>
-              <div className="stat-value" style={{ color: 'var(--color-success)' }}>89.4%</div>
+              <div className="stat-value" style={{ color: 'var(--color-success)' }}>
+                {stats ? `${stats.resolutionRate}%` : '89.4%'}
+              </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Resolved within target timeframe</div>
             </div>
 
@@ -206,8 +214,10 @@ export const HomePage: React.FC = () => {
                 <span className="stat-label">Avg. Resolution Time</span>
                 <Clock size={20} color="var(--color-amber)" />
               </div>
-              <div className="stat-value">28.5 hrs</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Under standard 48h SLA</div>
+              <div className="stat-value">
+                {stats ? `${stats.avgResolutionHours} hrs` : '28.5 hrs'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Under statutory SLA targets</div>
             </div>
 
             <div className="card stat-card" style={{ boxShadow: 'var(--shadow-md)', borderTop: '3px solid var(--color-critical)' }}>
@@ -215,8 +225,10 @@ export const HomePage: React.FC = () => {
                 <span className="stat-label">Automated Escalations</span>
                 <AlertTriangle size={20} color="var(--color-critical)" />
               </div>
-              <div className="stat-value" style={{ color: 'var(--color-critical)' }}>14</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Flagged to Dept Heads</div>
+              <div className="stat-value" style={{ color: 'var(--color-critical)' }}>
+                {stats ? stats.overdue : '14'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Flagged to Dept Supervisors</div>
             </div>
           </div>
         </div>

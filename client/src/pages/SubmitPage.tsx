@@ -195,7 +195,7 @@ export const SubmitPage: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -206,6 +206,9 @@ export const SubmitPage: React.FC = () => {
               >
                 <Copy size={16} /> Copy ID
               </button>
+              <Link to="/my-grievances" className="btn btn-secondary">
+                My Grievances
+              </Link>
               <Link to={`/track/${createdGrievanceId}`} className="btn btn-primary">
                 View Live Progress <ArrowRight size={16} />
               </Link>

@@ -7,7 +7,7 @@ import { StatusBadge, PriorityBadge, CategoryBadge } from '../components/StatusB
 import { SLACounter } from '../components/SLACounter';
 import { 
   LayoutDashboard, PlusCircle, Search, Filter, 
-  ChevronRight, Calendar, MapPin, Building2 
+  ChevronRight, Calendar, MapPin, Building2, RefreshCw, AlertCircle, X
 } from 'lucide-react';
 
 export const MyGrievancesPage: React.FC = () => {
@@ -16,22 +16,28 @@ export const MyGrievancesPage: React.FC = () => {
 
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchMyComplaints = async () => {
     try {
       setLoading(true);
+      setError(null);
       const params: Record<string, string> = { pageSize: '50' };
       if (statusFilter) params.status = statusFilter;
-      if (searchTerm) params.search = searchTerm;
+      if (searchTerm.trim()) params.search = searchTerm.trim();
 
-      const res = await complaintsApi.list(params);
+      // STRICT: Call /complaints/my which filters exclusively by the authenticated citizen
+      const res = await complaintsApi.my(params);
       if (res.data?.success) {
         setComplaints(res.data.data.items || []);
+      } else {
+        setError(res.data?.error || 'Failed to load your complaints');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load my grievances:', err);
+      setError(err.response?.data?.error || 'Unable to connect to server. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -48,6 +54,11 @@ export const MyGrievancesPage: React.FC = () => {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchMyComplaints();
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('');
   };
 
   if (!isAuthenticated) {
@@ -98,9 +109,19 @@ export const MyGrievancesPage: React.FC = () => {
           </p>
         </div>
 
-        <Link to="/submit" className="btn btn-primary">
-          <PlusCircle size={16} /> File New Grievance
-        </Link>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={fetchMyComplaints}
+            disabled={loading}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
+          </button>
+          <Link to="/submit" className="btn btn-primary btn-sm">
+            <PlusCircle size={16} /> File New Grievance
+          </Link>
+        </div>
       </div>
 
       {/* Filter / Search Bar */}
@@ -110,12 +131,30 @@ export const MyGrievancesPage: React.FC = () => {
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
             <input
               type="text"
-              placeholder="Search by ticket title, description, or grievance ID..."
+              placeholder="Search by ticket title, description, category, location, or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="form-input"
-              style={{ paddingLeft: '36px' }}
+              style={{ paddingLeft: '36px', paddingRight: searchTerm ? '36px' : '12px' }}
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => { setSearchTerm(''); fetchMyComplaints(); }}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted)'
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
 
           <select
@@ -129,8 +168,10 @@ export const MyGrievancesPage: React.FC = () => {
             <option value="acknowledged">Acknowledged</option>
             <option value="assigned">Assigned</option>
             <option value="in_progress">In Progress</option>
+            <option value="awaiting_information">Awaiting Information</option>
             <option value="resolved">Resolved</option>
             <option value="closed">Closed</option>
+            <option value="reopened">Reopened</option>
           </select>
 
           <button type="submit" className="btn btn-secondary">
@@ -138,6 +179,28 @@ export const MyGrievancesPage: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* Error State */}
+      {error && (
+        <div className="card" style={{
+          backgroundColor: '#fff1f2',
+          border: '1px solid #fecdd3',
+          padding: 'var(--space-4)',
+          marginBottom: 'var(--space-6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 'var(--space-3)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: '#be123c' }}>
+            <AlertCircle size={20} />
+            <span>{error}</span>
+          </div>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={fetchMyComplaints}>
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Complaints List */}
       {loading ? (
@@ -148,8 +211,17 @@ export const MyGrievancesPage: React.FC = () => {
         <div className="card empty-state">
           <Building2 size={44} />
           <h3>No Grievances Found</h3>
-          <p>You haven't filed any grievances matching this filter yet.</p>
-          <div style={{ marginTop: 'var(--space-4)' }}>
+          <p>
+            {searchTerm || statusFilter
+              ? "You don't have any grievances matching your search or filter."
+              : "You haven't filed any grievances yet."}
+          </p>
+          <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
+            {(searchTerm || statusFilter) && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={handleClearFilters}>
+                Clear Filters
+              </button>
+            )}
             <Link to="/submit" className="btn btn-primary btn-sm">
               <PlusCircle size={14} /> File a Grievance
             </Link>

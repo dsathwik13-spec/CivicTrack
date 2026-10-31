@@ -5,10 +5,9 @@ import dotenv from 'dotenv';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const DB_PATH = process.env.DB_PATH || './data/civictrack.db';
-
 export function getDbPath(): string {
-  const resolved = path.resolve(__dirname, '../..', DB_PATH);
+  const dbPath = process.env.DB_PATH || './data/civictrack.db';
+  const resolved = path.resolve(__dirname, '../..', dbPath);
   const dir = path.dirname(resolved);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -53,7 +52,19 @@ export function saveDb(): void {
   try {
     const data = rawDbInstance.export();
     const buffer = Buffer.from(data);
-    fs.writeFileSync(getDbPath(), buffer);
+    const dbPath = getDbPath();
+    const tempPath = `${dbPath}.tmp.${Date.now()}`;
+    fs.writeFileSync(tempPath, buffer);
+    try {
+      fs.renameSync(tempPath, dbPath);
+    } catch {
+      fs.copyFileSync(tempPath, dbPath);
+      try {
+        fs.unlinkSync(tempPath);
+      } catch {
+        // ignore temporary unlink failures
+      }
+    }
   } catch (err) {
     console.error('Failed to save database:', err);
   }
@@ -149,6 +160,7 @@ export async function initDb(): Promise<DatabaseWrapper> {
 
     wrappedDbInstance = wrapper;
 
+
     if (!saveInterval) {
       saveInterval = setInterval(() => {
         saveDb();
@@ -180,4 +192,19 @@ export function closeDb(): void {
     wrappedDbInstance = null;
     initPromise = null;
   }
+}
+
+// Graceful exit listeners to ensure in-memory database state is flushed
+if (process.env.NODE_ENV !== 'test') {
+  process.on('beforeExit', () => {
+    saveDb();
+  });
+  process.on('SIGINT', () => {
+    closeDb();
+    process.exit(0);
+  });
+  process.on('SIGTERM', () => {
+    closeDb();
+    process.exit(0);
+  });
 }

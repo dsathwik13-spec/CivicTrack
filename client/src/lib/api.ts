@@ -23,7 +23,9 @@ export const authApi = {
 // ─── Complaints ───
 export const complaintsApi = {
   create: (data: any) => api.post('/complaints', data),
-  list: (params: Record<string, string>) => api.get('/complaints', { params }),
+  list: (params?: Record<string, string>) => api.get('/complaints', { params }),
+  my: (params?: Record<string, string>) => api.get('/complaints/my', { params }),
+  public: (params?: Record<string, string>) => api.get('/complaints/public', { params }),
   get: (id: number) => api.get(`/complaints/${id}`),
   track: (grievanceId: string) => api.get(`/complaints/track/${grievanceId}`),
   updateStatus: (id: number, data: { status: string; reason?: string; resolution_notes?: string }) =>

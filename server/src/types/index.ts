@@ -201,11 +201,11 @@ declare module 'express-session' {
 
 // ─── Valid Status Transitions ───
 export const VALID_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
-  submitted: ['acknowledged'],
-  acknowledged: ['assigned'],
-  assigned: ['in_progress'],
+  submitted: ['acknowledged', 'assigned'],
+  acknowledged: ['assigned', 'in_progress'],
+  assigned: ['in_progress', 'acknowledged'],
   in_progress: ['awaiting_information', 'resolved'],
-  awaiting_information: ['in_progress'],
+  awaiting_information: ['in_progress', 'resolved'],
   resolved: ['closed', 'reopened'],
   closed: ['reopened'],
   reopened: ['acknowledged', 'assigned', 'in_progress'],

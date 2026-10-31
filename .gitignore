@@ -1,41 +1,64 @@
 # Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Environment & Secret files
+.env
+.env.*
+!.env.example
 
 # Build outputs
 dist/
 build/
+client/dist/
+server/dist/
 
-# Database
+# Local databases & user data
 *.db
+*.db-journal
 *.sqlite
 *.sqlite3
+server/data/*
+!server/data/.gitkeep
+test.db
+*.test.db
 
-# Environment
-.env
-.env.local
-.env.production
-
-# IDE
-.vscode/
-.idea/
+# Backups & Temporary files
+*.bak
+*.backup
+*.tmp
+*.temp
+*~
 *.swp
 *.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Uploads & User file persistence
+server/uploads/*
+!server/uploads/.gitkeep
+
+# IDE / Editor
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# Uploads
-server/uploads/*
-!server/uploads/.gitkeep
-
-# Logs
-*.log
-npm-debug.log*
-
-# Coverage
+# Coverage & test artifacts
 coverage/
-
-# Test results
 test-results/
 playwright-report/

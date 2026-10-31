@@ -1,5 +1,6 @@
 import { initDb, getDb, closeDb } from './connection';
 import { SCHEMA_SQL } from './schema';
+import { runMigrations } from './migrations';
 
 async function init() {
   console.log('🔧 Initializing CivicTrack database...');
@@ -8,7 +9,8 @@ async function init() {
   
   try {
     db.exec(SCHEMA_SQL);
-    console.log('✅ Database schema created successfully.');
+    runMigrations(db);
+    console.log('✅ Database schema and migrations applied successfully.');
     
     // Insert default SLA policies if none exist
     const count = db.prepare('SELECT COUNT(*) as count FROM sla_policies').get() as { count: number };

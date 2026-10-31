@@ -147,3 +147,25 @@ export interface DashboardStats {
   avgResolutionHours: number;
   resolutionRate: number;
 }
+
+export const VALID_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
+  submitted: ['acknowledged', 'assigned'],
+  acknowledged: ['assigned', 'in_progress'],
+  assigned: ['in_progress', 'acknowledged'],
+  in_progress: ['awaiting_information', 'resolved'],
+  awaiting_information: ['in_progress', 'resolved'],
+  resolved: ['closed', 'reopened'],
+  closed: ['reopened'],
+  reopened: ['acknowledged', 'assigned', 'in_progress'],
+};
+
+export const STATUS_LABELS: Record<ComplaintStatus, string> = {
+  submitted: 'Submitted',
+  acknowledged: 'Acknowledged (Inspected by Team)',
+  assigned: 'Assigned to Officer',
+  in_progress: 'In Progress (Field Work Underway)',
+  awaiting_information: 'Awaiting Information from Citizen',
+  resolved: 'Resolved (Repairs Finished)',
+  closed: 'Closed (Verified & Settled)',
+  reopened: 'Reopened',
+};

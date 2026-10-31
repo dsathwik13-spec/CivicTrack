@@ -1,23 +1,26 @@
 import { Router, Request, Response } from 'express';
 import { getDb } from '../database/connection';
-import { requireRole } from '../middleware/auth';
+import { requireRole, optionalAuth } from '../middleware/auth';
 
 const router = Router();
 
-// GET /api/dashboard/stats
-router.get('/stats', requireRole('officer', 'manager', 'admin'), (req: Request, res: Response) => {
+// GET /api/dashboard/stats — Aggregated grievance statistics
+router.get('/stats', optionalAuth, (req: Request, res: Response) => {
   try {
     const db = getDb();
 
     let where = 'WHERE 1=1';
     const params: any[] = [];
 
-    if (req.userRole === 'officer') {
-      where += ' AND (c.assigned_officer_id = ? OR c.department_id IN (SELECT department_id FROM users WHERE id = ?))';
-      params.push(req.userId, req.userId);
-    } else if (req.userRole === 'manager') {
-      where += ' AND (c.department_id IN (SELECT department_id FROM users WHERE id = ?) OR c.department_id IS NULL)';
-      params.push(req.userId);
+    // If department scope requested by officer or manager
+    if (req.query.scope === 'department') {
+      if (req.userRole === 'officer') {
+        where += ' AND (c.assigned_officer_id = ? OR c.department_id IN (SELECT department_id FROM users WHERE id = ?))';
+        params.push(req.userId, req.userId);
+      } else if (req.userRole === 'manager') {
+        where += ' AND (c.department_id IN (SELECT department_id FROM users WHERE id = ?) OR c.department_id IS NULL)';
+        params.push(req.userId);
+      }
     }
 
     const total = db.prepare(`SELECT COUNT(*) as count FROM complaints c ${where}`).get(...params) as { count: number };
@@ -71,7 +74,7 @@ router.get('/stats', requireRole('officer', 'manager', 'admin'), (req: Request, 
 });
 
 // GET /api/dashboard/analytics
-router.get('/analytics', requireRole('manager', 'admin'), (req: Request, res: Response) => {
+router.get('/analytics', optionalAuth, (req: Request, res: Response) => {
   try {
     const db = getDb();
     const dateFrom = req.query.date_from as string || '';

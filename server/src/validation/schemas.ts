@@ -100,4 +100,5 @@ export const complaintQuerySchema = z.object({
   date_from: z.string().optional(),
   date_to: z.string().optional(),
   overdue: z.string().optional(),
+  mine: z.string().optional(),
 });

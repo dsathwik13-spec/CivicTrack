@@ -9,6 +9,7 @@ import { CronJob } from 'cron';
 
 import { initDb, getDb } from './database/connection';
 import { SCHEMA_SQL } from './database/schema';
+import { runMigrations } from './database/migrations';
 import { errorHandler } from './middleware/errorHandler';
 import { runEscalationCheck } from './jobs/escalation';
 
@@ -104,6 +105,7 @@ async function start() {
   await initDb();
   const db = getDb();
   db.exec(SCHEMA_SQL);
+  runMigrations(db);
 
   app.listen(PORT, () => {
     console.log(`
@@ -126,9 +128,12 @@ async function start() {
   setTimeout(() => runEscalationCheck(), 5000);
 }
 
-start().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== 'test') {
+  start().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}
 
+export { app, start };
 export default app;
