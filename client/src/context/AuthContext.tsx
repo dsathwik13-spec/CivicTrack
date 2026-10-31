@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<User | null>;
   register: (data: { email: string; password: string; first_name: string; last_name: string; phone?: string }) => Promise<boolean>;
   logout: () => Promise<void>;
   quickLogin: (role: UserRole) => Promise<boolean>;
@@ -70,20 +70,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     refreshUser();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     try {
       setLoading(true);
       const res = await authApi.login({ email, password });
       if (res.data?.success && res.data?.data?.user) {
-        setUser(res.data.data.user);
-        toast.success(`Welcome back, ${res.data.data.user.first_name}!`);
-        return true;
+        const loggedUser = res.data.data.user;
+        setUser(loggedUser);
+        toast.success(`Welcome back, ${loggedUser.first_name}!`);
+        return loggedUser;
       }
-      return false;
+      return null;
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Login failed. Please check credentials.';
       toast.error(msg);
-      return false;
+      return null;
     } finally {
       setLoading(false);
     }
@@ -125,11 +126,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     const creds = DEMO_CREDENTIALS[role];
     if (!creds || !creds.pass) return false;
-    const success = await login(creds.email, creds.pass);
-    if (success) {
+    const loggedUser = await login(creds.email, creds.pass);
+    if (loggedUser) {
       toast.success(`Switched persona to: ${creds.title}`);
+      return true;
     }
-    return success;
+    return false;
   };
 
   return (

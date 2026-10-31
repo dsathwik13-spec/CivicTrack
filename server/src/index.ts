@@ -28,6 +28,9 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
 const isDev = process.env.NODE_ENV !== 'production';
 
+// Trust reverse proxy (Vercel / Cloudflare) to ensure secure HTTPS cookies are transmitted
+app.set('trust proxy', 1);
+
 // ─── Security ───
 app.use(helmet({
   contentSecurityPolicy: false, // Frontend handles CSP

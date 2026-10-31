@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { complaintsApi, adminApi } from '../lib/api';
 import { Complaint, ComplaintStatus, ComplaintPriority, VALID_TRANSITIONS, STATUS_LABELS } from '../types';
@@ -134,30 +135,50 @@ export const OfficerDashboard: React.FC = () => {
     }
   };
 
-  if (!isAuthenticated || (user?.role !== 'officer' && user?.role !== 'manager' && user?.role !== 'admin')) {
+  if (!isAuthenticated) {
     return (
       <div className="container" style={{ padding: 'var(--space-16) var(--space-4)', textAlign: 'center' }}>
         <div className="card empty-state" style={{ maxWidth: '560px', margin: '0 auto' }}>
           <Briefcase size={48} color="var(--color-forest)" />
           <h2>Department Officer Portal</h2>
-          <p style={{ marginBottom: 'var(--space-6)' }}>
-            This portal is restricted to municipal field officers, department engineers, and managers.
+          <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-text-secondary)' }}>
+            This workspace is restricted to municipal field officers, department engineers, and managers. Please sign in with your staff account.
+          </p>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link
+              to="/login?role=officer"
+              className="btn btn-primary"
+            >
+              <UserCheck size={16} /> Sign In as Field Officer
+            </Link>
+            <Link
+              to="/login?role=manager"
+              className="btn btn-secondary"
+            >
+              <Briefcase size={16} /> Sign In as Dept Manager
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.role !== 'officer' && user?.role !== 'manager' && user?.role !== 'admin') {
+    return (
+      <div className="container" style={{ padding: 'var(--space-16) var(--space-4)', textAlign: 'center' }}>
+        <div className="card empty-state" style={{ maxWidth: '560px', margin: '0 auto' }}>
+          <ShieldAlert size={48} color="var(--color-critical)" />
+          <h2>Staff Access Restricted</h2>
+          <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-text-secondary)' }}>
+            Your account ({user?.email}) is registered as a Citizen. This portal is strictly for municipal field personnel and department managers.
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center' }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => quickLogin('officer')}
-            >
-              ⚡ Quick Login as Field Officer
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => quickLogin('manager')}
-            >
-              👔 Login as Dept Manager
-            </button>
+            <Link to="/my-grievances" className="btn btn-primary">
+              Go to My Citizen Grievances
+            </Link>
+            <Link to="/login?role=officer" className="btn btn-secondary">
+              Switch to Staff Account
+            </Link>
           </div>
         </div>
       </div>

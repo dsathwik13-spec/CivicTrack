@@ -300,15 +300,20 @@ export const SubmitPage: React.FC = () => {
                 </p>
               </div>
             </div>
-            {isDemoMode && (
-              <button
-                type="button"
-                className="btn btn-sm btn-primary"
-                onClick={() => quickLogin('citizen')}
-              >
-                ⚡ Quick Login as Demo Citizen
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <Link to="/login?role=citizen" className="btn btn-sm btn-secondary">
+                Sign In
+              </Link>
+              {isDemoMode && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={() => quickLogin('citizen')}
+                >
+                  ⚡ Quick Demo
+                </button>
+              )}
+            </div>
           </div>
         )}
 

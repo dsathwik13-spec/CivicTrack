@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { adminApi, complaintsApi, dashboardApi } from '../lib/api';
 import { Complaint, User, Department, AuditLog, DashboardStats } from '../types';
@@ -169,22 +170,45 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  if (!isAuthenticated || user?.role !== 'admin') {
+  if (!isAuthenticated) {
+    return (
+      <div className="container" style={{ padding: 'var(--space-16) var(--space-4)', textAlign: 'center' }}>
+        <div className="card empty-state" style={{ maxWidth: '560px', margin: '0 auto' }}>
+          <Shield size={48} color="var(--color-forest)" />
+          <h2>Administrator Portal</h2>
+          <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-text-secondary)' }}>
+            This console is strictly for municipal city administrators and IT officers. Please sign in with your administrator account.
+          </p>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center' }}>
+            <Link
+              to="/login?role=admin"
+              className="btn btn-primary"
+            >
+              <Shield size={16} /> Sign In as System Admin
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.role !== 'admin') {
     return (
       <div className="container" style={{ padding: 'var(--space-16) var(--space-4)', textAlign: 'center' }}>
         <div className="card empty-state" style={{ maxWidth: '560px', margin: '0 auto' }}>
           <ShieldAlert size={48} color="var(--color-critical)" />
-          <h2>Administrator Portal Restricted</h2>
-          <p style={{ marginBottom: 'var(--space-6)' }}>
-            This console is strictly for city administrators. Use 1-click Demo Admin Login to access.
+          <h2>Administrator Privileges Required</h2>
+          <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-text-secondary)' }}>
+            Your account ({user?.email}) has the role "{user?.role?.toUpperCase()}". You do not have permissions to access the city-wide administrator console.
           </p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => quickLogin('admin')}
-          >
-            ⚡ Quick Login as System Admin
-          </button>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center' }}>
+            <Link to={user?.role === 'citizen' ? '/my-grievances' : '/officer'} className="btn btn-primary">
+              Go to Your Authorized Dashboard
+            </Link>
+            <Link to="/login?role=admin" className="btn btn-secondary">
+              Switch Account
+            </Link>
+          </div>
         </div>
       </div>
     );

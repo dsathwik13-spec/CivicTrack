@@ -89,8 +89,36 @@ export const Navbar: React.FC = () => {
             </span>
           </div>
 
-          {isDemoMode && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            {!isAuthenticated ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: '0.6875rem' }}>
+                <span style={{ opacity: 0.75 }}>Portals:</span>
+                <Link to="/login?role=citizen" style={{ color: 'white', opacity: 0.9, textDecoration: 'none', fontWeight: 600 }}>
+                  Citizen
+                </Link>
+                <span style={{ opacity: 0.4 }}>•</span>
+                <Link to="/login?role=officer" style={{ color: 'white', opacity: 0.9, textDecoration: 'none', fontWeight: 600 }}>
+                  Officer
+                </Link>
+                <span style={{ opacity: 0.4 }}>•</span>
+                <Link to="/login?role=manager" style={{ color: 'white', opacity: 0.9, textDecoration: 'none', fontWeight: 600 }}>
+                  Manager
+                </Link>
+                <span style={{ opacity: 0.4 }}>•</span>
+                <Link to="/login?role=admin" style={{ color: 'white', opacity: 0.9, textDecoration: 'none', fontWeight: 600 }}>
+                  Admin
+                </Link>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: '0.6875rem' }}>
+                <span style={{ color: 'var(--color-amber)', fontWeight: 700 }}>
+                  ● {user?.role ? user.role.toUpperCase() : 'USER'}
+                </span>
+                <span style={{ opacity: 0.85 }}>({user?.first_name || ''} {user?.last_name || ''})</span>
+              </div>
+            )}
+
+            {isDemoMode && (
               <button
                 type="button"
                 onClick={() => setIsDemoModalOpen(true)}
@@ -109,10 +137,10 @@ export const Navbar: React.FC = () => {
                 }}
               >
                 <Sparkles size={11} color="var(--color-amber)" />
-                {user ? `Persona: ${user.role.toUpperCase()}` : '⚡ Quick Demo Switcher'}
+                {user ? `Switch Persona` : '⚡ Quick Demo Switcher'}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Main Navbar */}

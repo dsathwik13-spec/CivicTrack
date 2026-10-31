@@ -70,16 +70,15 @@ export const MyGrievancesPage: React.FC = () => {
           <p style={{ marginBottom: 'var(--space-6)' }}>
             Please sign in to view the grievances you have registered, or use 1-click Demo Citizen Login.
           </p>
-          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center' }}>
-            <button
-              type="button"
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link
+              to="/login?role=citizen"
               className="btn btn-primary"
-              onClick={() => quickLogin('citizen')}
             >
-              ⚡ Quick Login as Demo Citizen
-            </button>
-            <Link to="/login" className="btn btn-secondary">
-              Sign In
+              <LayoutDashboard size={16} /> Sign In as Citizen
+            </Link>
+            <Link to="/register" className="btn btn-secondary">
+              Register New Account
             </Link>
           </div>
         </div>
