@@ -1,0 +1,1138 @@
+{
+  "info": {
+    "_postman_id": "c7f938a1-5402-4b2a-8742-12ce8b4c7321",
+    "name": "CivicTrack API",
+    "description": "Enterprise-grade Municipal Grievance Redressal and SLA Tracking Platform REST API. Includes complete authentication, role-based workflows for Citizens, Officers, Managers, and Admins, plus Analytics and Cron escalation triggers.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string",
+      "description": "Base URL of the CivicTrack API server (e.g. http://localhost:3001 or your production deployment URL)"
+    },
+    {
+      "key": "grievanceId",
+      "value": "CT-QSJMFJTAH7",
+      "type": "string",
+      "description": "Sample Grievance Reference ID for public tracking and queries"
+    },
+    {
+      "key": "complaintId",
+      "value": "1",
+      "type": "string",
+      "description": "Sample Complaint database ID for detail lookups and updates"
+    },
+    {
+      "key": "departmentId",
+      "value": "1",
+      "type": "string",
+      "description": "Sample Department ID"
+    },
+    {
+      "key": "notificationId",
+      "value": "1",
+      "type": "string",
+      "description": "Sample Notification ID"
+    },
+    {
+      "key": "userId",
+      "value": "2",
+      "type": "string",
+      "description": "Sample User ID for role and status management"
+    },
+    {
+      "key": "cronSecret",
+      "value": "your-cron-secret-here",
+      "type": "string",
+      "description": "Bearer secret token for triggering background cron jobs (configured in server .env)"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Authentication",
+      "description": "User authentication, registration, session management, and role-based login.",
+      "item": [
+        {
+          "name": "Register Citizen Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Aarav\",\n  \"last_name\": \"Sharma\",\n  \"email\": \"aarav.sharma@example.com\",\n  \"password\": \"Password@123\",\n  \"phone\": \"+91 98765 43210\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new Citizen account. Returns the created public user profile and sets an active session cookie (civictrack.sid)."
+          }
+        },
+        {
+          "name": "Login — Citizen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"citizen1@civictrack.demo\",\n  \"password\": \"Citizen@CivicTrack2024\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates as Citizen. Stores the HTTP-only session cookie (civictrack.sid) for subsequent authenticated requests."
+          }
+        },
+        {
+          "name": "Login — Field Officer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"officer.roads@civictrack.demo\",\n  \"password\": \"Officer@CivicTrack2024\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates as Field Officer. Grants access to officer queue, status transitions, and public/internal notes."
+          }
+        },
+        {
+          "name": "Login — Department Manager",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"roads.manager@civictrack.demo\",\n  \"password\": \"Manager@CivicTrack2024\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates as Department Manager. Grants supervisor access, assignment management, and priority updates."
+          }
+        },
+        {
+          "name": "Login — System Administrator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@civictrack.demo\",\n  \"password\": \"Admin@CivicTrack2024\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates as System Administrator. Grants full citywide access, user role management, and audit logs."
+          }
+        },
+        {
+          "name": "Get Current User Profile (/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Retrieves the currently authenticated user's profile and active session role."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Destroys the current session and clears the civictrack.sid session cookie."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Citizen Grievances",
+      "description": "Citizen grievance creation, personal grievance listing, public feed, and reference tracking.",
+      "item": [
+        {
+          "name": "Create Grievance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Severe deep potholes near 5th Cross Road\",\n  \"description\": \"Multiple craters spanning 4 feet across causing major traffic slowdown and extreme 2-wheeler danger after recent rains.\",\n  \"category\": \"roads_potholes\",\n  \"location\": \"14th Main, 5th Cross, Sector 2, HSR Layout\",\n  \"city\": \"Bengaluru\",\n  \"incident_date\": \"2026-10-31\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints"
+              ]
+            },
+            "description": "File a new grievance. Automatically assigns a high-entropy reference ID (CT-XXXXX), establishes SLA target resolution time, and records initial status history."
+          }
+        },
+        {
+          "name": "Get My Grievances (Authenticated Citizen)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/my?page=1&pageSize=20&sort=created_at&order=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "my"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Records per page"
+                },
+                {
+                  "key": "sort",
+                  "value": "created_at",
+                  "description": "Sort column"
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Sort order: asc or desc"
+                }
+              ]
+            },
+            "description": "Lists all grievances submitted by the currently logged-in citizen with strict user isolation."
+          }
+        },
+        {
+          "name": "Public Grievances Feed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/public?page=1&pageSize=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "public"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Public listing of grievances for municipal transparency. Strips confidential citizen PII."
+          }
+        },
+        {
+          "name": "Track Grievance by Reference ID (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/track/{{grievanceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "track",
+                "{{grievanceId}}"
+              ]
+            },
+            "description": "Public tracking view for citizens and residents using the unique reference code (e.g. CT-QSJMFJTAH7). Returns public timeline and status events."
+          }
+        },
+        {
+          "name": "Get Grievance Full Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/{{complaintId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "{{complaintId}}"
+              ]
+            },
+            "description": "Retrieves complete grievance record, status timeline, public updates, and internal staff notes (restricted to staff)."
+          }
+        },
+        {
+          "name": "Citizen Request Reopen",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"reopened\",\n  \"reason\": \"Pothole filled with loose gravel which washed away during yesterday's rain.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/{{complaintId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "{{complaintId}}",
+                "status"
+              ]
+            },
+            "description": "Citizens can request reopening of their resolved or closed grievances if the resolution was unsatisfactory."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Field Operations & Department Management",
+      "description": "Workflows for Field Officers and Department Managers: status transitions, assignment, SLA management, and dual-channel updates.",
+      "item": [
+        {
+          "name": "List Filtered Grievances (Staff Queue)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints?page=1&pageSize=20&status=submitted,acknowledged,in_progress&priority=high&sort=created_at&order=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "submitted,acknowledged,in_progress"
+                },
+                {
+                  "key": "priority",
+                  "value": "high"
+                },
+                {
+                  "key": "sort",
+                  "value": "created_at"
+                },
+                {
+                  "key": "order",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "Filtered grievance query for officers and managers. Automatically scopes results to assigned department or officer."
+          }
+        },
+        {
+          "name": "Update Status — Acknowledged",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"acknowledged\",\n  \"reason\": \"Grievance verified and logged into municipal road maintenance schedule.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/{{complaintId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "{{complaintId}}",
+                "status"
+              ]
+            },
+            "description": "Transition status from submitted to acknowledged. Records state change and notifies citizen."
+          }
+        },
+        {
+          "name": "Update Status — In Progress",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"reason\": \"Asphalt patch crew dispatched to location with road roller equipment.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/{{complaintId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "{{complaintId}}",
+                "status"
+              ]
+            },
+            "description": "Transition grievance to in_progress."
+          }
+        },
+        {
+          "name": "Update Status — Resolved (With Resolution Notes)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\",\n  \"reason\": \"Road resurfacing work completed and inspected by ward engineer.\",\n  \"resolution_notes\": \"Pothole filled with dense bituminous concrete, compacted with 10-ton roller, and sealed with bitumen emulsion.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/{{complaintId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "{{complaintId}}",
+                "status"
+              ]
+            },
+            "description": "Marks grievance as resolved. Requires resolution statement and records resolved_at timestamp."
+          }
+        },
+        {
+          "name": "Assign Officer / Department (Manager / Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": 1,\n  \"officer_id\": 2,\n  \"reason\": \"Assigning to Ward 150 Senior Road Maintenance Engineer.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/{{complaintId}}/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "{{complaintId}}",
+                "assign"
+              ]
+            },
+            "description": "Assigns grievance to specific department and field officer. Requires manager or admin role."
+          }
+        },
+        {
+          "name": "Update Priority & Recalculate SLA",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priority\": \"critical\",\n  \"reason\": \"Heavy monsoon forecast; hazard level upgraded due to bus route traffic.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/{{complaintId}}/priority",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "{{complaintId}}",
+                "priority"
+              ]
+            },
+            "description": "Updates grievance priority (low, medium, high, critical) and recalculates statutory SLA target resolution date."
+          }
+        },
+        {
+          "name": "Post Public Field Update",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Inspection completed at 10:30 AM. Material delivery scheduled for 2:00 PM today.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/{{complaintId}}/updates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "{{complaintId}}",
+                "updates"
+              ]
+            },
+            "description": "Posts a public update visible to the citizen and public tracking portal. Notifies citizen."
+          }
+        },
+        {
+          "name": "Add Internal Staff Note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Coordinating with BWSSB water engineer regarding underground pipeline clearance before paving.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/complaints/{{complaintId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "complaints",
+                "{{complaintId}}",
+                "notes"
+              ]
+            },
+            "description": "Confidential internal note. Accessible only by field officers, managers, and administrators."
+          }
+        },
+        {
+          "name": "Get Department Officers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/departments/{{departmentId}}/officers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "departments",
+                "{{departmentId}}",
+                "officers"
+              ]
+            },
+            "description": "Lists active field officers and managers assigned to the specified department."
+          }
+        },
+        {
+          "name": "Get Escalations & Overdue Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/escalations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "escalations"
+              ]
+            },
+            "description": "Returns overdue grievances and recent auto-escalation events."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. System Administration",
+      "description": "Administrative operations: user permissions, department configurations, and system audit logs.",
+      "item": [
+        {
+          "name": "List Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users?page=1&pageSize=20&role=officer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "role",
+                  "value": "officer"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Paginated user directory with role and keyword filtering. Requires admin role."
+          }
+        },
+        {
+          "name": "Update User Role & Department",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"officer\",\n  \"department_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}/role",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{userId}}",
+                "role"
+              ]
+            },
+            "description": "Change user role (citizen, officer, manager, admin) and department assignment. Protects against self-demotion."
+          }
+        },
+        {
+          "name": "Toggle User Active Status",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{userId}}",
+                "status"
+              ]
+            },
+            "description": "Activates or deactivates a user account. Deactivated users cannot log in. Protects against self-deactivation."
+          }
+        },
+        {
+          "name": "List Departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "departments"
+              ]
+            },
+            "description": "Lists all municipal departments with head officer name, staff member count, and open complaint count."
+          }
+        },
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Horticulture & Urban Forestry\",\n  \"description\": \"Tree maintenance, pruning, park amenities, and green cover preservation.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "departments"
+              ]
+            },
+            "description": "Creates a new municipal department in CivicTrack. Requires admin role."
+          }
+        },
+        {
+          "name": "View System Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/audit-logs?page=1&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Full immutable system audit trail showing actor, action, entity type, entity ID, details, and timestamps."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Dashboard & Analytics",
+      "description": "Aggregated city metrics, KPI indicators, category distributions, and SLA compliance statistics.",
+      "item": [
+        {
+          "name": "Grievance Aggregated Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "stats"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "department",
+                  "disabled": true,
+                  "description": "Filter stats to requesting user's department"
+                }
+              ]
+            },
+            "description": "Executive grievance counters: total, by status, overdue count, average resolution hours, and resolution percentage."
+          }
+        },
+        {
+          "name": "Citywide Analytics & Breakdown",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/analytics?date_from=2026-01-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "analytics"
+              ],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Aggregated analytics breakdown: complaints by category, status, priority, department workload, 30-day timeline, and SLA compliance."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Notifications",
+      "description": "In-app alerts and notifications for citizens and municipal staff.",
+      "item": [
+        {
+          "name": "Get User Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Retrieves notifications for the authenticated user, unread count, and related grievance reference IDs."
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            },
+            "description": "Marks an individual notification as read."
+          }
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "read-all"
+              ]
+            },
+            "description": "Marks all notifications for the authenticated user as read."
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. System & Cron Jobs",
+      "description": "System health check and background scheduled escalation jobs.",
+      "item": [
+        {
+          "name": "API Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Returns API status, database engine (Supabase PostgreSQL / SQLite), and system timestamp."
+          }
+        },
+        {
+          "name": "Run SLA Escalation Check (Cron / Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cronSecret}}",
+                "description": "CRON_SECRET configured in environment"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs/escalation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "escalation"
+              ]
+            },
+            "description": "Triggers statutory SLA breach evaluator. Flags overdue grievances and records escalation events. Protected by CRON_SECRET."
+          }
+        }
+      ]
+    }
+  ]
+}

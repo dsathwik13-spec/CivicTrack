@@ -1,7 +1,32 @@
 # 🏛️ CivicTrack — Public Grievance Redressal & SLA Tracking System
 > **Hackathon Submission | Project ID: HACK-P243**
 
+[![Postman Collection](https://img.shields.io/badge/Postman-Collection%20v2.1-orange?logo=postman)](https://raw.githubusercontent.com/dsathwik13-spec/CivicTrack/main/docs/CivicTrack_Postman_Collection.json)
+[![API Documentation](https://img.shields.io/badge/API-Documentation-blue?logo=markdown)](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/API_DOCUMENTATION.md)
+[![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL%20%7C%20SQLite-3ECF8E?logo=supabase)](https://supabase.com)
+[![Tests](https://img.shields.io/badge/Tests-33%2F33%20Passing-brightgreen)](https://github.com/dsathwik13-spec/CivicTrack)
+
 CivicTrack is an enterprise-grade, citizen-first municipal grievance redressal and service-level agreement (SLA) tracking platform. Designed for local municipal corporations (e.g. BBMP Bangalore), it bridges the accountability gap between citizens and municipal authorities with automated SLA countdowns, role-based workflows, transparent public tracking, and immutable audit logging.
+
+---
+
+## 📮 API Documentation & Postman Collection
+
+Complete REST API documentation and a pre-configured Postman Collection (v2.1) are available directly in this GitHub repository:
+
+| Asset | GitHub Link | Description |
+|---|---|---|
+| **API Documentation** | [docs/API_DOCUMENTATION.md](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/API_DOCUMENTATION.md) | Full endpoint reference, request/response schemas, validation rules & RBAC matrix |
+| **Postman Collection** | [docs/CivicTrack_Postman_Collection.json](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/CivicTrack_Postman_Collection.json) | Ready-to-import Postman v2.1 collection covering all 7 endpoint groups |
+| **1-Click Postman URL** | [`https://raw.githubusercontent.com/dsathwik13-spec/CivicTrack/main/docs/CivicTrack_Postman_Collection.json`](https://raw.githubusercontent.com/dsathwik13-spec/CivicTrack/main/docs/CivicTrack_Postman_Collection.json) | Direct URL for Postman **Import ➔ Link** |
+
+### 🚀 1-Click Postman Import:
+1. Open **Postman** and click **Import** (top left).
+2. Paste the raw GitHub URL:
+   ```text
+   https://raw.githubusercontent.com/dsathwik13-spec/CivicTrack/main/docs/CivicTrack_Postman_Collection.json
+   ```
+3. Click **Import**. All requests, role authentications, variables (`{{baseUrl}}`, `{{grievanceId}}`), and workflows are pre-configured.
 
 ---
 
