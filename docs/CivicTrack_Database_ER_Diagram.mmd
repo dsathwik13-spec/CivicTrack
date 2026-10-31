@@ -1,0 +1,205 @@
+erDiagram
+    %% ══════════════════════════════════════════════════════════════════════
+    %% 🏛️ CivicTrack — Database Design & Entity Relationship Diagram (ERD)
+    %% Implementation: Dual-Engine Architecture
+    %%   - Production: Supabase PostgreSQL 15+ (Pooled Connection & Session Store)
+    %%   - Development/Testing: SQLite via sql.js (WebAssembly)
+    %% Verified Database Entities: 14 Tables
+    %% ══════════════════════════════════════════════════════════════════════
+
+    %% ─── Core Organizational & User Hierarchy ───
+    departments ||--o| users : "headed by (head_user_id)"
+    departments ||--o{ users : "employs staff (department_id)"
+
+    %% ─── Core Complaint Redressal & Assignment ───
+    users ||--o{ complaints : "files grievance (citizen_id)"
+    departments ||--o{ complaints : "assigned department (department_id)"
+    users ||--o{ complaints : "assigned officer (assigned_officer_id)"
+
+    %% ─── Grievance Lifecycle & Audit History ───
+    complaints ||--|{ status_history : "state transitions (complaint_id)"
+    users ||--o{ status_history : "changed by (changed_by_user_id)"
+
+    complaints ||--o{ assignment_history : "reassignment log (complaint_id)"
+    users ||--o{ assignment_history : "assigned by (assigned_by_user_id)"
+    users ||--o{ assignment_history : "new officer (new_officer_id)"
+    users ||--o{ assignment_history : "prior officer (previous_officer_id)"
+    departments ||--o{ assignment_history : "new department (new_department_id)"
+    departments ||--o{ assignment_history : "prior department (previous_department_id)"
+
+    %% ─── Communication, Notes & Attachments ───
+    complaints ||--o{ public_updates : "public updates (complaint_id)"
+    users ||--o{ public_updates : "posted by (user_id)"
+
+    complaints ||--o{ internal_notes : "staff notes (complaint_id)"
+    users ||--o{ internal_notes : "authored by (user_id)"
+
+    complaints ||--o{ attachments : "evidence files (complaint_id)"
+    users ||--o{ attachments : "uploaded by (uploaded_by_user_id)"
+
+    %% ─── Statutory SLA Policies & Escalations ───
+    departments ||--o{ sla_policies : "department SLA (department_id)"
+    complaints ||--o{ escalation_events : "overdue breach (complaint_id)"
+    users ||--o{ escalation_events : "escalated to (escalated_to_user_id)"
+
+    %% ─── Notifications & System Audit Trail ───
+    users ||--o{ notifications : "dispatched to (user_id)"
+    complaints ||--o{ notifications : "related grievance (related_complaint_id)"
+    users ||--o{ audit_logs : "actor (user_id)"
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% Entity Definitions with Types, Keys & Constraints
+    %% ══════════════════════════════════════════════════════════════════════
+
+    departments {
+        integer id PK "SERIAL AUTOINCREMENT"
+        text name UK "UNIQUE department name"
+        text description "Department responsibility description"
+        integer head_user_id FK "Nullable, references users(id)"
+        integer is_active "DEFAULT 1 (Active status)"
+        text created_at "Timestamp of creation"
+    }
+
+    users {
+        integer id PK "SERIAL AUTOINCREMENT"
+        text email UK "UNIQUE, account email"
+        text password_hash "BCrypt hash (12 rounds)"
+        text first_name "First / Given name"
+        text last_name "Last / Family name"
+        text phone "Nullable telephone number"
+        text role "citizen | officer | manager | admin"
+        integer department_id FK "Nullable, references departments(id)"
+        integer is_active "DEFAULT 1 (Account status)"
+        text created_at "Account creation timestamp"
+        text updated_at "Profile update timestamp"
+    }
+
+    complaints {
+        integer id PK "SERIAL AUTOINCREMENT"
+        text grievance_id UK "UNIQUE tracking code (CT-XXXXX)"
+        text title "Concise grievance summary"
+        text description "Full incident description"
+        text category "7 Municipal Civic Categories"
+        text priority "low | medium | high | critical"
+        text status "8 Lifecycle Status States"
+        integer citizen_id FK "References users(id)"
+        integer department_id FK "Nullable, references departments(id)"
+        integer assigned_officer_id FK "Nullable, references users(id)"
+        text location "Street / Landmark address"
+        text city "City jurisdiction"
+        text incident_date "Nullable date of incident"
+        text target_resolution_date "Statutory SLA target timestamp"
+        text resolved_at "Nullable resolution timestamp"
+        text closed_at "Nullable closure timestamp"
+        text resolution_notes "Nullable final resolution notes"
+        integer is_overdue "DEFAULT 0 (1 when SLA breached)"
+        text created_at "Registration timestamp"
+        text updated_at "Last update timestamp"
+    }
+
+    status_history {
+        integer id PK "SERIAL AUTOINCREMENT"
+        integer complaint_id FK "References complaints(id)"
+        text previous_status "Nullable prior state"
+        text new_status "Transitioned state"
+        integer changed_by_user_id FK "References users(id)"
+        text reason "Nullable transition justification"
+        integer is_public "DEFAULT 1 (Visible to citizen)"
+        text created_at "Transition timestamp"
+    }
+
+    assignment_history {
+        integer id PK "SERIAL AUTOINCREMENT"
+        integer complaint_id FK "References complaints(id)"
+        integer previous_officer_id FK "Nullable, references users(id)"
+        integer new_officer_id FK "References users(id)"
+        integer previous_department_id FK "Nullable, references departments(id)"
+        integer new_department_id FK "References departments(id)"
+        integer assigned_by_user_id FK "References users(id)"
+        text reason "Nullable reassignment reason"
+        text created_at "Assignment timestamp"
+    }
+
+    public_updates {
+        integer id PK "SERIAL AUTOINCREMENT"
+        integer complaint_id FK "References complaints(id)"
+        integer user_id FK "References users(id)"
+        text message "Citizen-visible progress statement"
+        text created_at "Posting timestamp"
+    }
+
+    internal_notes {
+        integer id PK "SERIAL AUTOINCREMENT"
+        integer complaint_id FK "References complaints(id)"
+        integer user_id FK "References users(id)"
+        text note "Staff-only internal discussion"
+        text created_at "Recording timestamp"
+    }
+
+    attachments {
+        integer id PK "SERIAL AUTOINCREMENT"
+        integer complaint_id FK "References complaints(id)"
+        integer uploaded_by_user_id FK "References users(id)"
+        text original_filename "Original client filename"
+        text stored_filename "Sanitized disk filename"
+        text mime_type "File MIME type"
+        integer file_size "Size in bytes"
+        integer is_public "DEFAULT 1"
+        text created_at "Upload timestamp"
+    }
+
+    sla_policies {
+        integer id PK "SERIAL AUTOINCREMENT"
+        text category "Civic complaint category"
+        integer department_id FK "Nullable, references departments(id)"
+        text priority "low | medium | high | critical"
+        integer target_hours "Target resolution timeframe (hrs)"
+        integer escalation_hours "Escalation breach threshold (hrs)"
+        integer is_active "DEFAULT 1 (Active policy)"
+        text created_at "Creation timestamp"
+        text updated_at "Last update timestamp"
+    }
+
+    escalation_events {
+        integer id PK "SERIAL AUTOINCREMENT"
+        integer complaint_id FK "References complaints(id)"
+        integer escalation_level "Escalation tier (DEFAULT 1)"
+        integer escalated_to_user_id FK "Nullable, references users(id)"
+        text reason "Breach reason statement"
+        integer threshold_hours "Trigger threshold elapsed"
+        text created_at "Escalation event timestamp"
+    }
+
+    notifications {
+        integer id PK "SERIAL AUTOINCREMENT"
+        integer user_id FK "Recipient, references users(id)"
+        text title "Notification subject"
+        text message "Notification text"
+        text type "info | warning | success | error"
+        integer related_complaint_id FK "Nullable, references complaints(id)"
+        integer is_read "DEFAULT 0 (Unread flag)"
+        text created_at "Dispatch timestamp"
+    }
+
+    audit_logs {
+        integer id PK "SERIAL AUTOINCREMENT"
+        integer user_id FK "Actor, references users(id)"
+        text action "create | status_change | assign | update_role"
+        text entity_type "complaint | user | department"
+        integer entity_id "Target entity identifier"
+        text details "Nullable audit narrative"
+        text ip_address "Nullable client IP"
+        text created_at "Immutable log timestamp"
+    }
+
+    _migrations {
+        integer id PK "SERIAL AUTOINCREMENT"
+        text name UK "UNIQUE migration script filename"
+        text applied_at "Execution timestamp"
+    }
+
+    session {
+        varchar sid PK "Session token (connect-pg-simple)"
+        json sess "Serialized session data"
+        timestamp expire "Session expiration timestamp"
+    }

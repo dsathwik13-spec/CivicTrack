@@ -15,6 +15,8 @@ Official REST API documentation and Postman Collection for the **CivicTrack Publ
 |---|---|
 | **Postman Collection (GitHub Blob)** | [CivicTrack_Postman_Collection.json](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/CivicTrack_Postman_Collection.json) |
 | **Postman 1-Click Import Link (Raw JSON)** | [`https://raw.githubusercontent.com/dsathwik13-spec/CivicTrack/main/docs/CivicTrack_Postman_Collection.json`](https://raw.githubusercontent.com/dsathwik13-spec/CivicTrack/main/docs/CivicTrack_Postman_Collection.json) |
+| **Database ER Diagram (PNG)** | [CivicTrack_Database_ER_Diagram.png](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/CivicTrack_Database_ER_Diagram.png) |
+| **Database ER Diagram (Mermaid)** | [CivicTrack_Database_ER_Diagram.mmd](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/CivicTrack_Database_ER_Diagram.mmd) |
 | **API Documentation Markdown** | [API_DOCUMENTATION.md](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/API_DOCUMENTATION.md) |
 | **GitHub Repository** | [https://github.com/dsathwik13-spec/CivicTrack](https://github.com/dsathwik13-spec/CivicTrack) |
 

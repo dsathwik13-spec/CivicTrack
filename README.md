@@ -17,6 +17,7 @@ Complete REST API documentation and a pre-configured Postman Collection (v2.1) a
 | Asset | GitHub Link | Description |
 |---|---|---|
 | **API Documentation** | [docs/API_DOCUMENTATION.md](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/API_DOCUMENTATION.md) | Full endpoint reference, request/response schemas, validation rules & RBAC matrix |
+| **Database ER Diagram** | [docs/CivicTrack_Database_ER_Diagram.png](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/CivicTrack_Database_ER_Diagram.png) | High-resolution Entity Relationship Diagram (4200x2220) covering all 14 tables |
 | **Postman Collection** | [docs/CivicTrack_Postman_Collection.json](https://github.com/dsathwik13-spec/CivicTrack/blob/main/docs/CivicTrack_Postman_Collection.json) | Ready-to-import Postman v2.1 collection covering all 7 endpoint groups |
 | **1-Click Postman URL** | [`https://raw.githubusercontent.com/dsathwik13-spec/CivicTrack/main/docs/CivicTrack_Postman_Collection.json`](https://raw.githubusercontent.com/dsathwik13-spec/CivicTrack/main/docs/CivicTrack_Postman_Collection.json) | Direct URL for Postman **Import ➔ Link** |
 
