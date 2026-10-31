@@ -1,5 +1,6 @@
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
-import { Pool, PoolClient } from 'pg';
+import { Pool, PoolClient, types } from 'pg';
+import { AsyncLocalStorage } from 'async_hooks';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
@@ -7,7 +8,24 @@ import { convertSqliteToPostgres } from './queryConverter';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+// Configure PostgreSQL type parsers: Safe conversion of INT8 (BIGINT - OID 20) for COUNT(*) and SUM()
+types.setTypeParser(20, (val: string | null) => {
+  if (val === null) return null;
+  try {
+    const b = BigInt(val);
+    if (b <= BigInt(Number.MAX_SAFE_INTEGER) && b >= BigInt(Number.MIN_SAFE_INTEGER)) {
+      return Number(b);
+    }
+    return val; // Preserve string if outside safe JS integer range to prevent loss of precision
+  } catch {
+    return val;
+  }
+});
+
 export function isPostgres(): boolean {
+  if (process.env.NODE_ENV === 'test' && !process.env.TEST_PG) {
+    return false;
+  }
   return Boolean(process.env.DATABASE_URL);
 }
 
@@ -77,6 +95,14 @@ export function saveDb(): void {
   }
 }
 
+// Track active PostgreSQL transaction client per async call stack
+const pgTransactionStorage = new AsyncLocalStorage<PoolClient>();
+
+function getActivePgTarget(defaultTarget: Pool | PoolClient): Pool | PoolClient {
+  const txClient = pgTransactionStorage.getStore();
+  return txClient || defaultTarget;
+}
+
 /**
  * Creates a DatabaseWrapper for a PostgreSQL client or pool
  */
@@ -87,58 +113,72 @@ function createPgWrapper(target: Pool | PoolClient): DatabaseWrapper {
       const pgSql = convertSqliteToPostgres(sql);
       return {
         async run(...args: any[]) {
+          const active = getActivePgTarget(target);
           let runSql = pgSql;
           if (/^\s*INSERT\s+INTO\b/i.test(runSql) && !/\bRETURNING\b/i.test(runSql)) {
             runSql += ' RETURNING id';
           }
-          const res = await target.query(runSql, normArgs(args));
+          const res = await active.query(runSql, normArgs(args));
           const lastInsertRowid = res.rows[0]?.id ?? 0;
           return { changes: res.rowCount ?? 0, lastInsertRowid };
         },
         async get(...args: any[]) {
-          const res = await target.query(pgSql, normArgs(args));
+          const active = getActivePgTarget(target);
+          const res = await active.query(pgSql, normArgs(args));
           return res.rows[0];
         },
         async all(...args: any[]) {
-          const res = await target.query(pgSql, normArgs(args));
+          const active = getActivePgTarget(target);
+          const res = await active.query(pgSql, normArgs(args));
           return res.rows;
         },
       };
     },
     async exec(sql: string) {
-      await target.query(sql);
+      const active = getActivePgTarget(target);
+      await active.query(sql);
     },
     async run(sql: string, ...params: any[]) {
+      const active = getActivePgTarget(target);
       let runSql = convertSqliteToPostgres(sql);
       if (/^\s*INSERT\s+INTO\b/i.test(runSql) && !/\bRETURNING\b/i.test(runSql)) {
         runSql += ' RETURNING id';
       }
-      const res = await target.query(runSql, normArgs(params));
+      const res = await active.query(runSql, normArgs(params));
       const lastInsertRowid = res.rows[0]?.id ?? 0;
       return { changes: res.rowCount ?? 0, lastInsertRowid };
     },
     transaction<T extends (...args: any[]) => any>(fn: T): T {
       return (async (...args: any[]) => {
-        if ('connect' in target) {
-          const client = await (target as Pool).connect();
-          try {
-            await client.query('BEGIN');
-            const clientWrapper = createPgWrapper(client);
-            const prev = wrappedDbInstance;
-            wrappedDbInstance = clientWrapper;
-            const res = await fn(...args);
-            await client.query('COMMIT');
-            wrappedDbInstance = prev;
-            return res;
-          } catch (err) {
-            await client.query('ROLLBACK');
-            throw err;
-          } finally {
-            client.release();
-          }
-        } else {
-          // Already inside a transaction client
+        // If already within an active transaction client in this async context, execute fn directly
+        const currentTxClient = pgTransactionStorage.getStore();
+        if (currentTxClient) {
           return await fn(...args);
+        }
+
+        const pool = pgPoolInstance || (('connect' in target) ? (target as Pool) : null);
+        if (!pool) {
+          throw new Error('PostgreSQL connection pool is not available for transactions.');
+        }
+
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          const clientWrapper = createPgWrapper(client);
+          const res = await pgTransactionStorage.run(client, async () => {
+            return await fn(clientWrapper, ...args);
+          });
+          await client.query('COMMIT');
+          return res;
+        } catch (err) {
+          try {
+            await client.query('ROLLBACK');
+          } catch (rollbackErr) {
+            console.error('PostgreSQL transaction rollback failed:', rollbackErr);
+          }
+          throw err;
+        } finally {
+          client.release();
         }
       }) as T;
     },

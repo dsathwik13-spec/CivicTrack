@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/jobs/escalation",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 0 * * *"
     }
   ],
   "rewrites": [

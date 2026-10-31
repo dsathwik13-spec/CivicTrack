@@ -128,15 +128,16 @@ async function migrate() {
       }
     };
 
-    // 1. Departments
+    // 1. Departments (head_user_id temporarily set to null to avoid circular FK violation before users exist)
     const deptRows = getSqliteRows('departments');
-    await insertRows('departments', deptRows);
+    const deptRowsWithoutHead = deptRows.map(d => ({ ...d, head_user_id: null }));
+    await insertRows('departments', deptRowsWithoutHead);
 
-    // 2. Users
+    // 2. Users (now users can be inserted safely, referencing existing departments)
     const userRows = getSqliteRows('users');
     await insertRows('users', userRows);
 
-    // Update departments head_user_id
+    // Update departments head_user_id to restore original department head relationships
     for (const d of deptRows) {
       if (d.head_user_id) {
         await client.query('UPDATE departments SET head_user_id = $1 WHERE id = $2', [d.head_user_id, d.id]);
@@ -196,7 +197,8 @@ async function migrate() {
         await client.query(`
           SELECT setval(
             pg_get_serial_sequence('${t}', 'id'),
-            COALESCE((SELECT MAX(id) FROM "${t}"), 1)
+            COALESCE((SELECT MAX(id) FROM "${t}"), 1),
+            (SELECT MAX(id) FROM "${t}") IS NOT NULL
           );
         `);
       } catch {
@@ -212,7 +214,7 @@ async function migrate() {
       const res = await client.query(`SELECT count(*)::int as c FROM "${t}"`);
       const pgCount = res.rows[0].c;
       const expected = sqliteCounts[t];
-      const match = pgCount >= expected;
+      const match = pgCount === expected;
       if (!match) allMatched = false;
       console.log(`   • ${t.padEnd(20)}: SQLite=${expected} | Postgres=${pgCount} [${match ? 'MATCH ✓' : 'MISMATCH ❌'}]`);
     }
